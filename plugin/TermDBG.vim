@@ -208,11 +208,11 @@ func s:EndDebug(job, status)
     au! TermDBGAutoCMD
 endfunc
 
+let s:completer_skip_flag = 0
 " Handle a message received from gdb on the GDB/MI interface.
 func s:CommOutput(chan, msg)
-    " echomsg "a:msg:".a:msg
+    echomsg "a:msg:".a:msg
     if 1
-        let s:completers = []
 
         let s:curwin = winnr()
         if s:curwin == bufwinnr(s:termdbg_bufname)
@@ -222,13 +222,25 @@ func s:CommOutput(chan, msg)
         endif
         " echomsg "s:stayInTgtWin:".s:stayInTgtWin
 
-        let s:comm_msg = a:msg
+        " do not output completers
+        if  "complete" == strpart(a:msg, 2, strlen("complete"))
+            let s:completer_skip_flag = 1
+        endif
 
-        let gdbmsg = a:msg
+        if s:completer_skip_flag == 1
+            let s:comm_msg .= a:msg
+        endif
 
-        let gdb_line = gdbmsg
+        echomsg "s:comm_msg" .s:comm_msg
+        if  "complete" == strpart(s:comm_msg, 2, strlen("complete"))  && ( s:comm_msg =~  '(gdb)')
+            let s:completer_skip_flag = 0
+            let s:comm_msg = ''
+            return
+        endif
 
-        if gdb_line != ''
+        let gdb_line = a:msg
+
+        if gdb_line != '' && s:completer_skip_flag == 0
             " Handle 
             if gdb_line =~ '\(\*stopped\|\*running\|=thread-selected\)'
                 call s:HandleCursor(gdb_line)
@@ -393,10 +405,10 @@ func s:InstallCommands_Hotkeys()
     inoremap <expr><buffer> <silent> <c-p>  "\<c-x><c-l>"
     inoremap <expr><buffer> <silent> <c-r>  "\<c-x><c-n>"
 
-    " inoremap <expr><buffer><silent> <TAB>    pumvisible() ? "\<C-n>" : "\<c-x><c-u>"
-    " inoremap <expr><buffer><silent> <S-TAB>  pumvisible() ? "\<C-p>" : "\<c-x><c-u>"
-    inoremap <expr><buffer><silent> <TAB>    pumvisible() ? "\<C-n>" : "\<C-R>=TermDBG_Compl()<CR>"
-    inoremap <expr><buffer><silent> <S-TAB>  pumvisible() ? "\<C-p>" : "\<C-R>=TermDBG_Compl()<CR>"
+    inoremap <expr><buffer><silent> <TAB>    pumvisible() ? "\<C-n>" : "\<c-x><c-u>"
+    inoremap <expr><buffer><silent> <S-TAB>  pumvisible() ? "\<C-p>" : "\<c-x><c-u>"
+    " inoremap <expr><buffer><silent> <TAB>    pumvisible() ? "\<C-n>" : "\<C-R>=TermDBG_Compl()<CR>"
+    " inoremap <expr><buffer><silent> <S-TAB>  pumvisible() ? "\<C-p>" : "\<C-R>=TermDBG_Compl()<CR>"
     noremap <buffer><silent> <Tab> ""
     noremap <buffer><silent> <S-Tab> ""
 
@@ -989,9 +1001,60 @@ function! TermDBG_open()
     starti!
     " call cursor(0, 7)
 
-    " setl completefunc=TermDBG_Complete
+    setl completefunc=TermDBG_Complete
     "wincmd p
 endfunction
+
+fun! TermDBG_Complete(findstart, base)
+
+    if a:findstart
+
+        let usercmd = getline('.')
+        if s:dbg == 'gdb' && usercmd =~ '^\s*(gdb)' 
+            let usercmd = substitute(usercmd, '^\s*(gdb)\s*', '', '')
+            let usercmd = substitute(usercmd, '*', '', '') "fixed *pointer
+            let usercmd = 'complete ' .  usercmd
+        endif
+
+        call s:SendCommand(usercmd)
+
+        let output = ch_readraw(s:chan)
+        let s:completers = []
+        while output != "(gdb) "
+            if output =~ '\~"' 
+                let completer = strpart(output, 2, strlen(output)-5) 
+                " echomsg completer
+                call add(s:completers, completer)
+            endif
+            let output = ch_readraw(s:chan)
+        endw
+
+        " locate the start of the word
+        let line = getline('.')
+        let start = col('.') - 1
+        while start > 0 && line[start - 1] =~ '\S' && line[start-1] != '*' "fixed *pointer
+            let start -= 1
+        endwhile
+        return start
+    else
+        " find s:completers matching the "a:base"
+        let res = []
+        for m in (s:completers)
+            if a:base == '' 
+                return res
+            endif
+
+            if m =~ '^' . a:base
+                call add(res, m)
+            endif
+
+            if m =~ '^\a\+\s\+' . a:base
+                call add(res, substitute(m, '^\a*\s*', '', ''))
+            endif
+        endfor
+        return res
+    endif
+endfun
 
 
 function! TermDBG_SendCmd(cmd)
