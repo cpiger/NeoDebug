@@ -92,38 +92,11 @@ func s:StartDebug(cmd)
         let vertical = 0
     endif
 
-    if s:isunix
-        " Open a terminal window without a job, to run the debugged program
-        let s:ptybuf = term_start('NONE', {
-                    \ 'term_name': 'TermProgram',
-                    \ 'term_rows': g:termdbg_program_win_row,
-                    \ 'vertical': vertical,
-                    \ 'term_finish': 'close',
-                    \ })
-        if s:ptybuf == 0
-            echoerr 'Failed to open the program terminal window'
-            return
-        endif
-        let pty = job_info(term_getjob(s:ptybuf))['tty_out']
-        let s:ptywin = win_getid(winnr())
-        if vertical
-            " Assuming the source code window will get a signcolumn, use two more
-            " columns for that, thus one less for the terminal window.
-            exe (&columns / 2 - 1) . "wincmd |"
-        endif
-    endif
-
-    if s:ismswin
-        let cmd = [g:termdbgger, '-quiet','-q', '-f', '--interpreter=mi2', a:cmd]
-        let msg_cb = 'out_cb'
-    else
-        let cmd = [g:termdbgger, '-quiet','-q', '-f', '--interpreter=mi2','-tty', pty, a:cmd]
-        let msg_cb = 'err_cb'
-    endif
+    let cmd = [g:termdbgger, '-quiet','-q', '-f', '--interpreter=mi2', a:cmd]
     " Create a hidden terminal window to communicate with gdb
     if 1
         let s:commjob = job_start(cmd, {
-                    \  msg_cb : function('s:CommOutput'),
+                    \ 'out_cb' : function('s:CommOutput'),
                     \ 'exit_cb': function('s:EndDebug'),
                     \ })
 
@@ -178,10 +151,6 @@ func s:EndDebug(job, status)
     call s:goto_console_win()
     quit
 
-    if s:isunix
-        exe 'bwipe! ' . s:ptybuf
-    endif
-
     exe 'bwipe! ' . bufnr(s:termdbg_bufname)
 
     let curwinid = win_getid(winnr())
@@ -211,7 +180,7 @@ endfunc
 let s:completer_skip_flag = 0
 " Handle a message received from gdb on the GDB/MI interface.
 func s:CommOutput(chan, msg)
-    echomsg "a:msg:".a:msg
+    " echomsg "a:msg:".a:msg
     if 1
 
         let s:curwin = winnr()
@@ -231,7 +200,7 @@ func s:CommOutput(chan, msg)
             let s:comm_msg .= a:msg
         endif
 
-        echomsg "s:comm_msg" .s:comm_msg
+        " echomsg "s:comm_msg" .s:comm_msg
         if  "complete" == strpart(s:comm_msg, 2, strlen("complete"))  && ( s:comm_msg =~  '(gdb)')
             let s:completer_skip_flag = 0
             let s:comm_msg = ''
