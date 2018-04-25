@@ -44,6 +44,38 @@ let s:completers = []
 let s:historys = []
 
 let s:set_disabled_bp = 0
+
+let s:help_open = 0
+let s:help_text_short = [
+			\ '" Press ? for help',
+			\ ]
+
+let s:help_text = s:help_text_short
+
+function s:update_help_text()
+    if s:help_open
+        let s:help_text = [
+            \ '<F5> 	- run or continue (c)',
+            \ '<S-F5> 	- stop debugging (kill)',
+            \ '<F10> 	- next',
+            \ '<F11> 	- step into',
+            \ '<S-F11> - step out (finish)',
+            \ '<C-F10>	- run to cursor (tb and c)',
+            \ '<F9> 	- toggle breakpoint on current line',
+            \ '<C-F9> 	- toggle enable/disable breakpoint on current line',
+            \ '\ju or <C-S-F10> - set next statement (tb and jump)',
+            \ '<C-P>   - view variable under the cursor (.p)',
+            \ '<TAB>   - trigger complete ',
+            \ ]
+    else
+        let s:help_text = s:help_text_short
+    endif
+endfunction
+if !exists('g:termdbg_enable_help')
+    let g:termdbg_enable_help = 1
+endif
+
+
 " =======================================================
 func s:StartDebug(cmd)
     let s:startwin = win_getid(winnr())
@@ -89,22 +121,15 @@ func s:StartDebug(cmd)
         let msg_cb = 'err_cb'
     endif
     " Create a hidden terminal window to communicate with gdb
-    let s:commbuf = term_start(cmd, {
-                \ 'term_name': 'term_gdb_communication',
-                \ 'hidden': g:termdbg_gdbwin_hidden,
-                \  msg_cb : function('s:CommOutput'),
-                \ 'exit_cb': function('s:EndDebug'),
-                \ 'term_finish': 'close',
-                \ })
+    if 1
+        let s:commjob = job_start(cmd, {
+                    \  msg_cb : function('s:CommOutput'),
+                    \ 'exit_cb': function('s:EndDebug'),
+                    \ })
 
-    if s:commbuf == 0
-        echoerr 'Failed to open the communication terminal window'
-        if s:isunix
-            exe 'bwipe! ' . s:ptybuf
-        endif
-        return
+        let s:chan = job_getchannel(s:commjob)  
+        let commpty = job_info((s:commjob))['tty_out']
     endif
-    let commpty = job_info(term_getjob(s:commbuf))['tty_out']
     let s:gdbwin = win_getid(winnr())
 
     " Interpret commands while the target is running.  This should usualy only be
@@ -113,7 +138,7 @@ func s:StartDebug(cmd)
     " call s:SendCommand('-gdb-set mi-async on')
     call s:SendCommand('set mi-async on')
     if s:ismswin
-        call s:SendCommand('set new-console on')
+        " call s:SendCommand('set new-console on')
     endif
     call s:SendCommand('set print pretty on')
     call s:SendCommand('set breakpoint pending on')
@@ -124,7 +149,7 @@ func s:StartDebug(cmd)
 
     " Enable showing a balloon with eval info
     if has("balloon_eval") || has("balloon_eval_term")
-        set bexpr=TermDBGBalloonExpr()
+        set bexpr=TermDBG_BalloonExpr()
         if has("balloon_eval")
             set ballooneval
             set balloondelay=500
@@ -134,7 +159,6 @@ func s:StartDebug(cmd)
         endif
     endif
 
-
     augroup TermDBGAutoCMD
         au BufRead * call s:BufRead()
         au BufUnload * call s:BufUnloaded()
@@ -143,17 +167,28 @@ endfunc
 
 func s:EndDebug(job, status)
 
-    if s:ismswin
-        exe 'bwipe! ' . s:commbuf
-    else
+	if !s:termdbg_running
+		return
+	endif
+
+	let s:termdbg_running = 0
+    sign unplace *
+
+    " If gdb window is open then close it.
+    call s:goto_console_win()
+    quit
+
+    if s:isunix
         exe 'bwipe! ' . s:ptybuf
     endif
+
+    exe 'bwipe! ' . bufnr(s:termdbg_bufname)
 
     let curwinid = win_getid(winnr())
 
     call win_gotoid(s:startwin)
     let &signcolumn = s:startsigncolumn
-    call s:DeleteCommands()
+    call s:DeleteCommands_Hotkeys()
 
     call win_gotoid(curwinid)
     if s:save_columns > 0
@@ -170,258 +205,65 @@ func s:EndDebug(job, status)
         endif
     endif
 
-
     au! TermDBGAutoCMD
-
-    call s:TermDBG_cb_close()
-
 endfunc
 
 " Handle a message received from gdb on the GDB/MI interface.
 func s:CommOutput(chan, msg)
     " echomsg "a:msg:".a:msg
-    let s:completers = []
+    if 1
+        let s:completers = []
 
-    let s:curwin = winnr()
-    if s:curwin == bufwinnr(s:termdbg_bufname)
-        let s:stayInTgtWin = 0
-    else
-        let s:stayInTgtWin = 1
-    endif
-    " echomsg "s:stayInTgtWin:".s:stayInTgtWin
-    " let msg = substitute(msg, '[?25l','', 'g')
-    " let msg = substitute(msg, '[?25h','', 'g')
-    let s:comm_msg .= a:msg
-    let s:comm_msg = substitute(s:comm_msg, '\e[16G\|\e[18G\|\e[78G\|\e[155G\|\e[73G\|\e[1G\|\e[44G\|\e[?25l\|\e[?25h\|\e[0K\|\e[0m\|\e[?1005l\|\e[?1000h\|\e[?1002h\|\e[?1003h\|\e[?1015h\|\e[?1006h\|\e[7G','', 'g')
-    " echomsg "s:comm_msg:".s:comm_msg    
-
-    let s:comm_msg = substitute(s:comm_msg, '\r\n&','\n\r\&', 'g')
-    let s:comm_msg = substitute(s:comm_msg, '\r\n\~','\n\r~', 'g')
-    let s:comm_msg = substitute(s:comm_msg, '"\r\n=','"\n\r=', 'g')
-    let s:comm_msg = substitute(s:comm_msg, '"\r\n\^','"\n\r\^', 'g')
-    let s:comm_msg = substitute(s:comm_msg, '\r\n\^','\n\r\^', 'g')
-    let s:comm_msg = substitute(s:comm_msg, '"\r\n\*','"\n\r*', 'g')
-    " let s:comm_msg = substitute(s:comm_msg, '"\r\n','"\n\r', 'g')
-    let s:comm_msg = substitute(s:comm_msg, '\r\n(gdb)\r\n','\n\r(gdb)\n\r', 'g')
-    let s:comm_msg = substitute(s:comm_msg, '\r\n(gdb)','\n\r(gdb)', 'g')
-    " echomsg "s:comm_msg:".s:comm_msg
-    "sometimes contain 2 (gdb)
-
-    " echomsg strridx(s:comm_msg, "\n\r(gdb)\n\r")
-    " echomsg strpart(s:comm_msg, strlen(s:comm_msg)- strlen("\n\r(gdb)\n\r"),strlen("\n\r(gdb)\n\r"))
-
-    if  "complete" == strpart(s:comm_msg, 0, strlen("complete")) 
-                \ && ( s:comm_msg =~  '\n\r(gdb)\n\r' || s:comm_msg =~  '\n\r(gdb) ' || s:comm_msg =~  '\n\r(gdb)')
-        " echomsg "complete msg ok!"
-        " echomsg "complete s:comm_msg:".s:comm_msg    
-        let s:comm_msg = substitute(s:comm_msg, '\r\n','', 'g')
-        " echomsg "s:comm_msg[end]:[".s:comm_msg[strlen(s:comm_msg)-7]."]"  
-        " echomsg "s:comm_msg[end]:[".s:comm_msg[strlen(s:comm_msg)-6]."]"  
-        " echomsg "s:comm_msg[end]:[".s:comm_msg[strlen(s:comm_msg)-5]."]"  
-        " echomsg "s:comm_msg[end]:[".s:comm_msg[strlen(s:comm_msg)-4]."]"  
-        " echomsg "s:comm_msg[end]:[".s:comm_msg[strlen(s:comm_msg)-3]."]"  
-        " echomsg "s:comm_msg[end]:[".s:comm_msg[strlen(s:comm_msg)-2]."]"  
-        " echomsg "s:comm_msg[end]:[".s:comm_msg[strlen(s:comm_msg)-1]."]"  
-        " echomsg "s:comm_msg[end]:[".s:comm_msg[strlen(s:comm_msg)]."]"  
-
-        if s:comm_msg[strlen(s:comm_msg)-1] == '"' 
-                    \ &&  s:comm_msg[strlen(s:comm_msg)-2] != '='
-                    \ &&  s:comm_msg[strlen(s:comm_msg)-2] != ' '
-            let comm_msg_compl = strpart(s:comm_msg, 0, strridx(s:comm_msg, "\"")+1) 
-            " echomsg "comm_msg_compl[".comm_msg_compl."]"
-            let s:comm_msg = strpart(s:comm_msg, strridx(s:comm_msg, "\"")+1)
-            " echomsg "s:comm_msg:[".s:comm_msg."]"
-        elseif s:comm_msg[strlen(s:comm_msg)-1] == ' ' &&  s:comm_msg[strlen(s:comm_msg)-2] == ')'
-                    \ && s:comm_msg[strlen(s:comm_msg)-3] == 'b'
-                    \ && s:comm_msg[strlen(s:comm_msg)-4] == 'd'
-                    \ && s:comm_msg[strlen(s:comm_msg)-5] == 'g'
-                    \ && s:comm_msg[strlen(s:comm_msg)-6] == '('
-            let comm_msg_compl = strpart(s:comm_msg, 0, strridx(s:comm_msg, " ")+1) 
-            "echomsg "comm_msg_compl[".comm_msg_compl."]"
-            let s:comm_msg = strpart(s:comm_msg, strridx(s:comm_msg, " ")+1)
-            "echomsg "s:comm_msg:[".s:comm_msg."]"
+        let s:curwin = winnr()
+        if s:curwin == bufwinnr(s:termdbg_bufname)
+            let s:stayInTgtWin = 0
         else
-            let comm_msg_compl = strpart(s:comm_msg, 0, strridx(s:comm_msg, "\n\r")+2) 
-            " echomsg "comm_msg_compl[".comm_msg_compl."]"
-            let s:comm_msg = strpart(s:comm_msg, strridx(s:comm_msg, "\n\r")+2)
-            " echomsg "s:comm_msg:[".s:comm_msg."]"
+            let s:stayInTgtWin = 1
         endif
+        " echomsg "s:stayInTgtWin:".s:stayInTgtWin
 
-        let gdbmsgs = split(comm_msg_compl, '\n\r(gdb)\zs')
-        for gdbmsg in gdbmsgs
-            " echomsg "complete gdbmsg:".gdbmsg
+        let s:comm_msg = a:msg
 
-            if  "complete" == strpart(comm_msg_compl, 0,strlen("complete"))
-                let compl_lines = split(gdbmsg, '\n\r')
-                for compl_line in compl_lines
-                    " echomsg "compl_line:".compl_line
-                    if "complete" == strpart(compl_line, 0, strlen("complete"))
-                        let str_start= strpart(compl_line, strlen("complete")+1, strlen(compl_line)) 
-                        let start = strlen(str_start)
-                        " echomsg "str_start:start".str_start.start
-                    elseif compl_line =~ '\~"' 
-                        let compl_line = strpart(compl_line, 2, strlen(compl_line)-5) 
-                        call add(s:completers, compl_line)
-                    elseif compl_line == "(gdb)"
-                        let compl_line = s:termdbg_prompt
-                    endif
-                endfor "for compl_lines
-                call complete(col('.')-start, s:completers)
-                " continue
-                " break
-                return
+        let gdbmsg = a:msg
+
+        let gdb_line = gdbmsg
+
+        if gdb_line != ''
+            " Handle 
+            if gdb_line =~ '\(\*stopped\|\*running\|=thread-selected\)'
+                call s:HandleCursor(gdb_line)
+            elseif gdb_line =~ '\^done,bkpt=' || gdb_line =~ '=breakpoint-created,'
+                call s:HandleNewBreakpoint(gdb_line)
+            elseif gdb_line =~ '=breakpoint-deleted,'
+                call s:HandleBreakpointDelete(gdb_line)
+            elseif gdb_line =~ '\^done,value='
+                call s:HandleEvaluate(gdb_line)
+            elseif gdb_line =~ '\^error,msg='
+                call s:HandleError(gdb_line)
+            elseif gdb_line == "(gdb) "
+                let gdb_line = s:termdbg_prompt
             endif
-        endfor
-    " else
-        " echomsg "wait for more complete msg"
-        " return
-    " endif
 
-elseif  (s:comm_msg =~  '\n\r' || s:comm_msg =~  '\n\r(gdb)\n\r' || s:comm_msg =~  '\n\r(gdb) ' 
-            \ || (s:comm_msg[strlen(s:comm_msg)-1] == '"' &&  s:comm_msg[strlen(s:comm_msg)-2] != '='))
-            \ && "complete" != strpart(s:comm_msg, 0, strlen("complete")) 
-        " echomsg "msg ok!"
-        " echomsg "s:comm_msg:".s:comm_msg    
-        let s:comm_msg = substitute(s:comm_msg, '\r\n','', 'g')
-        " echomsg "s:comm_msg[end]:[".s:comm_msg[strlen(s:comm_msg)-7]."]"  
-        " echomsg "s:comm_msg[end]:[".s:comm_msg[strlen(s:comm_msg)-6]."]"  
-        " echomsg "s:comm_msg[end]:[".s:comm_msg[strlen(s:comm_msg)-5]."]"  
-        " echomsg "s:comm_msg[end]:[".s:comm_msg[strlen(s:comm_msg)-4]."]"  
-        " echomsg "s:comm_msg[end]:[".s:comm_msg[strlen(s:comm_msg)-3]."]"  
-        " echomsg "s:comm_msg[end]:[".s:comm_msg[strlen(s:comm_msg)-2]."]"  
-        " echomsg "s:comm_msg[end]:[".s:comm_msg[strlen(s:comm_msg)-1]."]"  
-        " echomsg "s:comm_msg[end]:[".s:comm_msg[strlen(s:comm_msg)]."]"  
+            call s:goto_console_win()
+            if gdb_line =~ '^\~" >"' 
+                call append(line("$"), strpart(gdb_line, 2, strlen(gdb_line)-3))
+            else
+                call append(line("$"), gdb_line)
+            endif
+            $
+            starti!
+            redraw
+            if s:mode != "i"
+                stopi
+            endif
 
-        if s:comm_msg[strlen(s:comm_msg)-1] == '"' 
-                    \ &&  s:comm_msg[strlen(s:comm_msg)-2] != '='
-                    \ &&  s:comm_msg[strlen(s:comm_msg)-2] != ' '
-            let comm_msg_gdb = strpart(s:comm_msg, 0, strridx(s:comm_msg, "\"")+1) 
-            " echomsg "comm_msg_gdb[".comm_msg_gdb."]"
-            let s:comm_msg = strpart(s:comm_msg, strridx(s:comm_msg, "\"")+1)
-            " echomsg "s:comm_msg:[".s:comm_msg."]"
-        elseif s:comm_msg[strlen(s:comm_msg)-1] == ' ' &&  s:comm_msg[strlen(s:comm_msg)-2] == ')'
-                    \ && s:comm_msg[strlen(s:comm_msg)-3] == 'b'
-                    \ && s:comm_msg[strlen(s:comm_msg)-4] == 'd'
-                    \ && s:comm_msg[strlen(s:comm_msg)-5] == 'g'
-                    \ && s:comm_msg[strlen(s:comm_msg)-6] == '('
-            let comm_msg_gdb = strpart(s:comm_msg, 0, strridx(s:comm_msg, " ")+1) 
-            "echomsg "comm_msg_gdb[".comm_msg_gdb."]"
-            let s:comm_msg = strpart(s:comm_msg, strridx(s:comm_msg, " ")+1)
-            "echomsg "s:comm_msg:[".s:comm_msg."]"
-        else
-            let comm_msg_gdb = strpart(s:comm_msg, 0, strridx(s:comm_msg, "\n\r")+2) 
-            " echomsg "comm_msg_gdb[".comm_msg_gdb."]"
-            let s:comm_msg = strpart(s:comm_msg, strridx(s:comm_msg, "\n\r")+2)
-            " echomsg "s:comm_msg:[".s:comm_msg."]"
         endif
-
-        let gdbmsgs = split(comm_msg_gdb, '\n\r(gdb)\zs')
-        for gdbmsg in gdbmsgs
-            " echomsg "gdbmsg:".gdbmsg
-
-            let gdb_lines = split(gdbmsg, '\n\r')
-            let i = 0
-            let gdb_line_skip = -1
-            for gdb_line in gdb_lines
-                " echomsg "gdb_line:[".gdb_line."]"
-
-                if gdb_line != ''
-                    " Handle 
-                    if gdb_line =~ '\(\*stopped\|\*running\|=thread-selected\)'
-                        call s:HandleCursor(gdb_line)
-                    elseif gdb_line =~ '\^done,bkpt=' || gdb_line =~ '=breakpoint-created,'
-                        call s:HandleNewBreakpoint(gdb_line)
-                    elseif gdb_line =~ '=breakpoint-deleted,'
-                        call s:HandleBreakpointDelete(gdb_line)
-                    elseif gdb_line =~ '\^done,value='
-                        call s:HandleEvaluate(gdb_line)
-                    elseif gdb_line =~ '\^error,msg='
-                        call s:HandleError(gdb_line)
-                    endif
-
-                    " Handle output 
-                    " gdb_line =~ '^\n\r' 
-                    " gdb_line =~ '^\n'
-                    if i == gdb_line_skip
-                        let gdb_line_skip = -1
-                        continue
-                    endif
-                    if gdb_line == "(gdb)"
-                        let gdb_line = s:termdbg_prompt
-                    endif
-
-                    if (gdb_line =~ '^'.s:usercmd && s:usercmd != '')
-                                \ || gdb_line =~ '^\~"done\.' 
-                                \ || gdb_line =~ '^\^done' 
-                                \ || gdb_line =~ '&"\\n"'
-                                \ || gdb_line =~ '^\~"\\n"'
-                                \ || gdb_line =~ '\^error,msg='
-                                \ || gdb_line =~ '^\^' 
-                                \ || gdb_line =~ '^\~"\\032\\032'
-                                \ || (gdb_line =~ '&"' && s:usercmd == strpart(gdb_line, 2 , strlen(gdb_line)-5))
-                        " echomsg "gdb_line1:[".gdb_line."]"
-                    elseif gdb_line =~ '^\~"\\nBreakpoint "'
-                        call s:goto_console_win()
-                        " call append(line("$"), strpart(gdb_line, 2, strlen(gdb_line)-5))
-                        let gdb_line_skip = i + 1
-                        let output_line = substitute(gdb_lines[i].gdb_lines[i+1], '\~"\\n\|"\~"\|\\n"', '', 'g')
-                        " echomsg "output_line:".output_line
-                        call append(line("$"), output_line)
-                        $
-                        starti!
-                        redraw
-                        if s:mode != "i"
-                            stopi
-                        endif
-                    elseif gdb_line =~ '^\~"' 
-                                \ || gdb_line =~ '^&"' 
-                        " echomsg "gdb_line2:[".gdb_line."]"
-                        call s:goto_console_win()
-                        if gdb_line =~ '^\~" >"' 
-                            call append(line("$"), strpart(gdb_line, 2, strlen(gdb_line)-3))
-                        else
-                            call append(line("$"), strpart(gdb_line, 2, strlen(gdb_line)-5))
-                        endif
-                        if s:isunix
-                            if gdb_line =~ '^\~"Breakpoint '
-                                call append(line("$"), s:termdbg_prompt)
-                            endif
-                        endif
-                        $
-                        starti!
-                        redraw
-                        if s:mode != "i"
-                            stopi
-                        endif
-                    elseif gdb_line == s:termdbg_prompt
-                        " echomsg "gdb_line3:[".gdb_line."]"
-                        call s:goto_console_win()
-                        if getline("$") == s:termdbg_prompt
-                        else
-                            call append(line("$"), gdb_line)
-                        endif
-                        $
-                        starti!
-                        redraw
-                        if s:mode != "i"
-                            stopi
-                        endif
-                    endif
-
-                endif
-
-                let i = i + 1
-            endfor "for gdb_lines
-        endfor "for gdbmsgs
 
         if s:stayInTgtWin
             call win_gotoid(s:startwin)
         endif
 
-    else
-        " echomsg "Waiting for more msg to come!"
     endif
-
 
 endfunc
 
@@ -477,24 +319,24 @@ func s:InstallCommands_Hotkeys()
     hi def link termdbgFrame LineNr
     hi def link termdbgCmd Macro
     " syntax
-	syn keyword termdbgKey Function Breakpoint Catchpoint 
-	syn match termdbgFrame /\v^#\d+ .*/ contains=termdbgGoto
-	syn match termdbgGoto /\v<at [^()]+:\d+|file .+, line \d+/
-	syn match termdbgCmd /^(gdb).*/
-	syn match termdbgPtr /\v(^|\s+)\zs\$?\w+ \=.{-0,} 0x\w+/
-	" highlight the whole line for 
-	" returns for info threads | info break | finish | watchpoint
-	syn match termdbgHiLn /\v^\s*(Id\s+Target Id|Num\s+Type|Value returned is|(Old|New) value =|Hardware watchpoint).*$/
+    syn keyword termdbgKey Function Breakpoint Catchpoint 
+    syn match termdbgFrame /\v^#\d+ .*/ contains=termdbgGoto
+    syn match termdbgGoto /\v<at [^()]+:\d+|file .+, line \d+/
+    syn match termdbgCmd /^(gdb).*/
+    syn match termdbgPtr /\v(^|\s+)\zs\$?\w+ \=.{-0,} 0x\w+/
+    " highlight the whole line for 
+    " returns for info threads | info break | finish | watchpoint
+    syn match termdbgHiLn /\v^\s*(Id\s+Target Id|Num\s+Type|Value returned is|(Old|New) value =|Hardware watchpoint).*$/
 
-	" syntax for perldb
-	syn match termdbgCmd /^\s*DB<.*/
-"	syn match termdbgFrame /\v^#\d+ .*/ contains=termdbgGoto
-	syn match termdbgGoto /\v from file ['`].+' line \d+/
-	syn match termdbgGoto /\v at ([^ ]+) line (\d+)/
-	syn match termdbgGoto /\v at \(eval \d+\)..[^:]+:\d+/
+    " syntax for perldb
+    syn match termdbgCmd /^\s*DB<.*/
+    "	syn match termdbgFrame /\v^#\d+ .*/ contains=termdbgGoto
+    syn match termdbgGoto /\v from file ['`].+' line \d+/
+    syn match termdbgGoto /\v at ([^ ]+) line (\d+)/
+    syn match termdbgGoto /\v at \(eval \d+\)..[^:]+:\d+/
 
-	
-	" shortcut in termdbg window
+
+    " shortcut in termdbg window
     inoremap <expr><buffer><BS>  TermDBG_isModifiableX() ? "\<BS>"  : ""
     inoremap <expr><buffer><c-h> TermDBG_isModifiableX() ? "\<c-h>" : ""
     noremap <buffer> <silent> i :call TermDBG_Keyi()<cr>
@@ -544,7 +386,7 @@ func s:InstallCommands_Hotkeys()
     inoremap <expr><buffer><PageDown>   ""
 
 
-	noremap <buffer><silent>? :call TermDBG_toggle_help()<cr>
+    noremap <buffer><silent>? :call TermDBG_toggle_help()<cr>
     " inoremap <buffer> <silent> <c-i> <c-o>:call s:TermDBG_gotoInput()<cr>
     " noremap <buffer> <silent> <c-i> :call s:TermDBG_gotoInput()<cr>
 
@@ -561,80 +403,76 @@ func s:InstallCommands_Hotkeys()
     noremap <buffer><silent> <ESC> :call TermDBG_close_window()<CR>
 
     inoremap <expr><buffer> <silent> <CR> pumvisible() ? "\<c-y><c-o>:call TermDBG(getline('.'), 'i')<cr>" : "<c-o>:call TermDBG(getline('.'), 'i')<cr>"
-	imap <buffer> <silent> <2-LeftMouse> <cr>
-	imap <buffer> <silent> <kEnter> <cr>
+    imap <buffer> <silent> <2-LeftMouse> <cr>
+    imap <buffer> <silent> <kEnter> <cr>
 
     nnoremap <buffer> <silent> <CR> :call TermDBG(getline('.'), 'n')<cr>
-	nmap <buffer> <silent> <2-LeftMouse> <cr>
+    nmap <buffer> <silent> <2-LeftMouse> <cr>
     imap <buffer> <silent> <LeftMouse> <Nop>
-	nmap <buffer> <silent> <kEnter> <cr>
+    nmap <buffer> <silent> <kEnter> <cr>
 
-	" inoremap <buffer> <silent> <TAB> <C-X><C-L>
-	"nnoremap <buffer> <silent> : <C-W>p:
+    " inoremap <buffer> <silent> <TAB> <C-X><C-L>
+    "nnoremap <buffer> <silent> : <C-W>p:
 
-	nmap <silent> <F9>	         :call TermDBG_ToggleBreakpoint()<CR>
-	map! <silent> <F9>	         <c-o>:call TermDBG_ToggleBreakpoint()<CR>
+    nmap <silent> <F9>	         :call TermDBG_ToggleBreakpoint()<CR>
+    map! <silent> <F9>	         <c-o>:call TermDBG_ToggleBreakpoint()<CR>
 
-	" nmap <silent> <F9>	         :call TermDBG_Btoggle(0)<CR>
+    " nmap <silent> <F9>	         :call TermDBG_Btoggle(0)<CR>
     nmap <silent> <C-F9>	     :call TermDBG_Btoggle(1)<CR>
-	" map! <silent> <F9>	         <c-o>:call TermDBG_Btoggle(0)<CR>
-	map! <silent> <C-F9>         <c-o>:call TermDBG_Btoggle(1)<CR>
-	nmap <silent> <Leader>ju	 :call TermDBG_jump()<CR>
-	nmap <silent> <C-S-F10>		 :call TermDBG_jump()<CR>
-	nmap <silent> <C-F10>        :call TermDBG_runToCursur()<CR>
-	map! <silent> <C-S-F10>		 <c-o>:call TermDBG_jump()<CR>
-	map! <silent> <C-F10>        <c-o>:call TermDBG_runToCursur()<CR>
+    " map! <silent> <F9>	         <c-o>:call TermDBG_Btoggle(0)<CR>
+    map! <silent> <C-F9>         <c-o>:call TermDBG_Btoggle(1)<CR>
+    nmap <silent> <Leader>ju	 :call TermDBG_jump()<CR>
+    nmap <silent> <C-S-F10>		 :call TermDBG_jump()<CR>
+    nmap <silent> <C-F10>        :call TermDBG_runToCursur()<CR>
+    map! <silent> <C-S-F10>		 <c-o>:call TermDBG_jump()<CR>
+    map! <silent> <C-F10>        <c-o>:call TermDBG_runToCursur()<CR>
     nmap <silent> <F6>           :call TermDBG("run")<CR>
-	nmap <silent> <C-P>	         :TermDBG p <C-R><C-W><CR>
-	vmap <silent> <C-P>	         y:TermDBG p <C-R>0<CR>
-	nmap <silent> <Leader>pr	 :TermDBG p <C-R><C-W><CR>
-	vmap <silent> <Leader>pr	 y:TermDBG p <C-R>0<CR>
-	nmap <silent> <Leader>bt	 :TermDBG bt<CR>
+    nmap <silent> <C-P>	         :TermDBG p <C-R><C-W><CR>
+    vmap <silent> <C-P>	         y:TermDBG p <C-R>0<CR>
+    nmap <silent> <Leader>pr	 :TermDBG p <C-R><C-W><CR>
+    vmap <silent> <Leader>pr	 y:TermDBG p <C-R>0<CR>
+    nmap <silent> <Leader>bt	 :TermDBG bt<CR>
 
     nmap <silent> <F5>    :TermDBG c<cr>
     nmap <silent> <S-F5>  :TermDBG k<cr>
-	nmap <silent> <F10>   :TermDBG n<cr>
-	nmap <silent> <F11>   :TermDBG s<cr>
-	nmap <silent> <S-F11> :TermDBG finish<cr>
-	nmap <silent> <c-q>   <cr>:TermDBG q<cr>
+    nmap <silent> <F10>   :TermDBG n<cr>
+    nmap <silent> <F11>   :TermDBG s<cr>
+    nmap <silent> <S-F11> :TermDBG finish<cr>
+    nmap <silent> <c-q> :TermDBG q<cr>
+    nmap <c-c> :call TermDBG_SendKey("\<c-c>")<cr>
 
     " map! <silent> <F5>    <c-o>:TermDBG c<cr>i
     " map! <silent> <S-F5>  <c-o>:TermDBG k<cr>i
     map! <silent> <F5>    <c-o>:TermDBG c<cr>
     map! <silent> <S-F5>  <c-o>:TermDBG k<cr>
-	map! <silent> <F10>   <c-o>:TermDBG n<cr>
-	map! <silent> <F11>   <c-o>:TermDBG s<cr>
-	map! <silent> <S-F11> <c-o>:TermDBG finish<cr>
-	map! <silent> <c-q> <c-o>:TermDBG q<cr>
+    map! <silent> <F10>   <c-o>:TermDBG n<cr>
+    map! <silent> <F11>   <c-o>:TermDBG s<cr>
+    map! <silent> <S-F11> <c-o>:TermDBG finish<cr>
+    map! <silent> <c-q>   <c-o>:TermDBG q<cr>
 
-	amenu TermDBG.Toggle\ breakpoint<tab>F9			:call TermDBG_Btoggle(0)<CR>
-	amenu TermDBG.Run/Continue<tab>F5 					:TermDBG c<CR>
-	amenu TermDBG.Step\ into<tab>F11					:TermDBG s<CR>
-	amenu TermDBG.Next<tab>F10							:TermDBG n<CR>
-	amenu TermDBG.Step\ out<tab>Shift-F11				:TermDBG finish<CR>
-	amenu TermDBG.Run\ to\ cursor<tab>Ctrl-F10			:call TermDBG_runToCursur()<CR>
-	amenu TermDBG.Stop\ debugging\ (Kill)<tab>Shift-F5	:TermDBG k<CR>
-	amenu TermDBG.-sep1- :
+    amenu TermDBG.Toggle\ breakpoint<tab>F9			:call TermDBG_Btoggle(0)<CR>
+    amenu TermDBG.Run/Continue<tab>F5 					:TermDBG c<CR>
+    amenu TermDBG.Step\ into<tab>F11					:TermDBG s<CR>
+    amenu TermDBG.Next<tab>F10							:TermDBG n<CR>
+    amenu TermDBG.Step\ out<tab>Shift-F11				:TermDBG finish<CR>
+    amenu TermDBG.Run\ to\ cursor<tab>Ctrl-F10			:call TermDBG_runToCursur()<CR>
+    amenu TermDBG.Stop\ debugging\ (Kill)<tab>Shift-F5	:TermDBG k<CR>
+    amenu TermDBG.-sep1- :
 
-	amenu TermDBG.Show\ callstack<tab>\\bt				:call TermDBG("where")<CR>
-	amenu TermDBG.Set\ next\ statement\ (Jump)<tab>Ctrl-Shift-F10\ or\ \\ju 	:call TermDBG_jump()<CR>
-	amenu TermDBG.Top\ frame 						:call TermDBG("frame 0")<CR>
-	amenu TermDBG.Callstack\ up 					:call TermDBG("up")<CR>
-	amenu TermDBG.Callstack\ down 					:call TermDBG("down")<CR>
-	amenu TermDBG.-sep2- :
+    amenu TermDBG.Show\ callstack<tab>\\bt				:call TermDBG("where")<CR>
+    amenu TermDBG.Set\ next\ statement\ (Jump)<tab>Ctrl-Shift-F10\ or\ \\ju 	:call TermDBG_jump()<CR>
+    amenu TermDBG.Top\ frame 						:call TermDBG("frame 0")<CR>
+    amenu TermDBG.Callstack\ up 					:call TermDBG("up")<CR>
+    amenu TermDBG.Callstack\ down 					:call TermDBG("down")<CR>
+    amenu TermDBG.-sep2- :
 
-	amenu TermDBG.Preview\ variable<tab>Ctrl-P		:TermDBG p <C-R><C-W><CR> 
-	amenu TermDBG.Print\ variable<tab>\\pr			:TermDBG p <C-R><C-W><CR> 
-	amenu TermDBG.Show\ breakpoints 				:TermDBG info breakpoints<CR>
-	amenu TermDBG.Show\ locals 					:TermDBG info locals<CR>
-	amenu TermDBG.Show\ args 						:TermDBG info args<CR>
-	amenu TermDBG.Quit			 					:TermDBG q<CR>
+    amenu TermDBG.Preview\ variable<tab>Ctrl-P		:TermDBG p <C-R><C-W><CR> 
+    amenu TermDBG.Print\ variable<tab>\\pr			:TermDBG p <C-R><C-W><CR> 
+    amenu TermDBG.Show\ breakpoints 				:TermDBG info breakpoints<CR>
+    amenu TermDBG.Show\ locals 					:TermDBG info locals<CR>
+    amenu TermDBG.Show\ args 						:TermDBG info args<CR>
+    amenu TermDBG.Quit			 					:TermDBG q<CR>
 
-	if has('balloon_eval')
-		" set bexpr=TermDBG_balloonExpr()
-		" set balloondelay=500
-		" set ballooneval
-	endif
 
 endfunc
 
@@ -659,7 +497,7 @@ func s:InstallWinbar()
 endfunc
 
 " Delete installed debugger commands in the current window.
-func s:DeleteCommands()
+func s:DeleteCommands_Hotkeys()
     delcommand Break
     delcommand Clear
     delcommand Step
@@ -709,6 +547,33 @@ func s:DeleteCommands()
     sign undefine termdbgPC
     sign undefine termdbgBP
     "unlet s:breakpoints
+
+
+    unmap <F9>
+    unmap <C-F9>
+    unmap <Leader>ju
+    unmap <C-S-F10>
+    unmap <C-F10>
+    unmap <C-P>
+    unmap <Leader>pr
+    unmap <Leader>bt
+
+    unmap <F5>
+    unmap <S-F5>
+    unmap <F10>
+    unmap <F11>
+    unmap <S-F11>
+
+    if s:ismswin
+        " so _exrc
+        exec 'so '. g:termdbg_exrc . s:gdbd_port
+        call delete(g:termdbg_exrc . s:gdbd_port)
+    else
+        " so .exrc
+        exec 'so '. g:termdbg_exrc . s:gdbd_port
+        call delete(g:termdbg_exrc . s:gdbd_port)
+    endif
+    stopi
 endfunc
 
 " :Break - Set a breakpoint at the cursor position.
@@ -722,7 +587,7 @@ func s:SetBreakpoint()
         sleep 10m
     endif
     " call s:SendCommand('-break-insert '
-                " \ . fnameescape(expand('%:p')) . ':' . line('.'))
+    " \ . fnameescape(expand('%:p')) . ':' . line('.'))
     call s:SendCommand('break '
                 \ . fnameescape(expand('%:p')) . ':' . line('.'))
     if do_continue
@@ -740,9 +605,9 @@ func s:ClearBreakpoint()
     " echomsg "s:ClearBreakpoint:fnamelnum".fname.lnum
     for [key, val] in items(s:breakpoints)
         if val['fname'] == fname && val['lnum'] == lnum
-            call term_sendkeys(s:commbuf, 'delete ' . key . "\r")
-            " call term_sendkeys(s:commbuf, '-break-delete ' . key . "\r")
-            " call term_sendkeys(s:commbuf, '-break-disable ' . key . "\r")
+            call ch_sendraw(s:commjob, 'delete ' . key . "\n")
+            " call ch_sendraw(s:commjob, '-break-delete ' . key . "\n")
+            " call ch_sendraw(s:commjob, '-break-disable ' . key . "\n")
             " Assume this always wors, the reply is simply "^done".
             exe 'sign unplace ' . (s:break_id + key)
             unlet s:breakpoints[key]
@@ -752,14 +617,13 @@ func s:ClearBreakpoint()
 endfunc
 
 func TermDBG_ToggleBreakpoint()
-	" call s:gotoTgtWin()
     call win_gotoid(s:startwin)
     let fname = fnameescape(expand('%:t'))
     let fname = fnamemodify(fnamemodify(fname, ":t"), ":p")
     let lnum = line('.')
     for [key, val] in items(s:breakpoints)
         if val['fname'] == fname && val['lnum'] == lnum
-            call term_sendkeys(s:commbuf, 'delete ' . key . "\r")
+            call ch_sendraw(s:commjob, 'delete ' . key . "\n")
             " Assume this always wors, the reply is simply "^done".
             exe 'sign unplace ' . (s:break_id + key)
             unlet s:breakpoints[key]
@@ -772,7 +636,11 @@ endfunc
 
 " :Next, :Continue, etc - send a command to gdb
 func s:SendCommand(cmd)
-    call term_sendkeys(s:commbuf, a:cmd . "\r")
+    call ch_sendraw(s:commjob, a:cmd . "\n")
+endfunc
+
+func TermDBG_SendKey(key)
+    call ch_sendraw(s:commjob, a:key)
 endfunc
 
 func s:Run(args)
@@ -815,17 +683,6 @@ func s:HandleEvaluate(msg)
     let value = substitute(a:msg, '.*value="\(.*\)"', '\1', '')
     let value = substitute(value, '\\"', '"', 'g')
 
-    if s:evalFromBalloonExpr
-        if s:evalFromBalloonExprResult == ''
-            let s:evalFromBalloonExprResult = s:evalexpr . ': ' . value
-        else
-            let s:evalFromBalloonExprResult .= ' = ' . value
-        endif
-        call balloon_show(s:evalFromBalloonExprResult)
-    else
-        echomsg '"' . s:evalexpr . '": ' . value
-    endif
-
     if s:evalexpr[0] != '*' && value =~ '^0x' && value != '0x0' && value !~ '"$'
         " Looks like a pointer, also display what it points to.
         let s:ignoreEvalError = 1
@@ -837,7 +694,7 @@ endfunc
 
 " Show a balloon with information of the variable under the mouse pointer,
 " if there is any.
-func TermDBGBalloonExpr()
+func! TermDBG_BalloonExpr()
     if v:beval_winid != s:startwin
         return
     endif
@@ -845,7 +702,48 @@ func TermDBGBalloonExpr()
     let s:evalFromBalloonExprResult = ''
     let s:ignoreEvalError = 1
     call s:SendEval(v:beval_text)
-    return ''
+
+    let output = ch_readraw(s:chan)
+    let alloutput = ''
+    while output != "(gdb) "
+        let alloutput .= output
+        let output = ch_readraw(s:chan)
+    endw
+
+    let value = substitute(alloutput, '.*value="\(.*\)"', '\1', '')
+    let value = substitute(value, '\\"', '"', 'g')
+    let value = substitute(value, '\\n\s*', '', 'g')
+
+    if s:evalFromBalloonExprResult == ''
+        let s:evalFromBalloonExprResult = s:evalexpr . ': ' . value
+    else
+        let s:evalFromBalloonExprResult .= ' = ' . value
+    endif
+
+    if s:evalexpr[0] != '*' && value =~ '^0x' && value != '0x0' && value !~ '"$'
+        " Looks like a pointer, also display what it points to.
+        let s:ignoreEvalError = 1
+        call s:SendEval('*' . s:evalexpr)
+
+        let output = ch_readraw(s:chan)
+        let alloutput = ''
+        while output != "(gdb) "
+            let alloutput .= output
+            let output = ch_readraw(s:chan)
+        endw
+
+        let value = substitute(alloutput, '.*value="\(.*\)"', '\1', '')
+        let value = substitute(value, '\\"', '"', 'g')
+        let value = substitute(value, '\\n\s*', '', 'g')
+
+        let s:evalFromBalloonExprResult .= ' ' . value
+
+    endif
+    " for goto_console_win to display also
+    call s:SendEval(v:beval_text)
+
+    return s:evalFromBalloonExprResult
+
 endfunc
 
 " Handle an error.
@@ -875,9 +773,9 @@ func s:HandleCursor(msg)
         let fname = substitute(a:msg, '.*fullname="\([^"]*\)".*', '\1', '')
 
         " if -1 == match(fname, '\\\\')
-            " let fname = fname
+        " let fname = fname
         " else
-            " let fname = substitute(fname, '\\\\','\\', 'g')
+        " let fname = substitute(fname, '\\\\','\\', 'g')
         " endif
 
         let fname = fnamemodify(fnamemodify(fname, ":t"), ":p")
@@ -941,12 +839,12 @@ func s:HandleNewBreakpoint(msg)
     call win_gotoid(s:startwin)
     " exe 'e +'.lnum ' '.fname
     exe 'e '.fname
-	exe lnum
+    exe lnum
 
     if bufloaded(fname)
         call s:PlaceSign(nr, entry)
     endif
-	redraw
+    redraw
 endfunc
 
 func s:PlaceSign(nr, entry)
@@ -998,39 +896,32 @@ endfunc
 
 let s:match = []
 function! s:mymatch(expr, pat)
-	let s:match = matchlist(a:expr, a:pat)
-	return len(s:match) >0
+    let s:match = matchlist(a:expr, a:pat)
+    return len(s:match) >0
 endf
 
 function! s:goto_console_win()
-	if bufname("%") == s:termdbg_bufname
-		return
-	endif
-	let termdbg_winnr = bufwinnr(s:termdbg_bufname)
-	if termdbg_winnr == -1
-		" if multi-tab or the buffer is hidden
-		call TermDBG_openWindow()
-		let termdbg_winnr = bufwinnr(s:termdbg_bufname)
-	endif
-	exec termdbg_winnr . "wincmd w"
-endf
-" go to edit buffer ?
-function! s:gotoTgtWin()
-	let termdbg_winnr = bufwinnr(s:termdbg_bufname)
-	if winnr() == termdbg_winnr
-        exec "wincmd k"
-	endif
+    if bufname("%") == s:termdbg_bufname
+        return
+    endif
+    let termdbg_winnr = bufwinnr(s:termdbg_bufname)
+    if termdbg_winnr == -1
+        " if multi-tab or the buffer is hidden
+        call TermDBG_openWindow()
+        let termdbg_winnr = bufwinnr(s:termdbg_bufname)
+    endif
+    exec termdbg_winnr . "wincmd w"
 endf
 
 function! s:TermDBG_bpkey(file, line)
-	return a:file . ":" . a:line
+    return a:file . ":" . a:line
 endf
 
 function! s:TermDBG_curpos()
-	" ???? filename ????
-	let file = expand("%:t")
-	let line = line(".")
-	return s:TermDBG_bpkey(file, line)
+    " ???? filename ????
+    let file = expand("%:t")
+    let line = line(".")
+    return s:TermDBG_bpkey(file, line)
 endf
 
 " Get ready for communication
@@ -1055,8 +946,8 @@ endfunction
 
 " NOTE: this function will be called by termdbg script.
 function! TermDBG_open()
-	" save current setting and restore when termdbg quits via 'so .exrc'
-	" exec 'mk! '
+    " save current setting and restore when termdbg quits via 'so .exrc'
+    " exec 'mk! '
     exec 'mk! ' . g:termdbg_exrc . s:gdbd_port
     "delete line set runtimepath for missing some functions after termdbg quit
     " silent exec '!start /b sed -i "/set runtimepath/d" ' . g:termdbg_exrc . s:gdbd_port
@@ -1064,10 +955,10 @@ function! TermDBG_open()
     let sed_tmp = fnamemodify(g:termdbg_exrc . s:gdbd_port, ":p:h")
     silent exec '!start /b rm -f '. sed_tmp . '/sed*'   
 
-	set nocursorline
-	set nocursorcolumn
+    set nocursorline
+    set nocursorcolumn
 
-	call TermDBG_openWindow()
+    call TermDBG_openWindow()
 
     " Mark the buffer as a scratch buffer
     setlocal buftype=nofile
@@ -1080,83 +971,31 @@ function! TermDBG_open()
     setlocal nowrap
     setlocal nobuflisted
     setlocal nonumber
-	setlocal winfixheight
-	setlocal cursorline
+    setlocal winfixheight
+    setlocal cursorline
 
-	setlocal foldcolumn=2
-	setlocal foldtext=TermDBG_foldTextExpr()
-	setlocal foldmarker={,}
-	setlocal foldmethod=marker
+    setlocal foldcolumn=2
+    setlocal foldtext=TermDBG_foldTextExpr()
+    setlocal foldmarker={,}
+    setlocal foldmethod=marker
 
     call s:InstallCommands_Hotkeys()
-	
-	let s:termdbg_running = 1
+
+    let s:termdbg_running = 1
 
     " call TermDBG("init") " get init msg
     " call TermDBG("help") " get init msg
     call TermDBG("") " get init msg
     starti!
     " call cursor(0, 7)
-	
+
     " setl completefunc=TermDBG_Complete
-	"wincmd p
+    "wincmd p
 endfunction
 
-function! s:TermDBG_bufunload()
-	if s:termdbg_running
-		call TermDBG('q')
-	else
-		call s:TermDBG_cb_close()
-	endif
-endfunction
 
-function! s:TermDBG_cb_close()
-	if !s:termdbg_running
-		return
-	endif
-
-	let s:termdbg_running = 0
-	sign unplace *
-	if has('balloon_eval')
-		set bexpr&
-	endif
-
-	" If gdb window is open then close it.
-    call s:goto_console_win()
-    quit
-
-
-	unmap <F9>
-	unmap <C-F9>
-	unmap <Leader>ju
-	unmap <C-S-F10>
-	unmap <C-F10>
-	unmap <C-P>
-	unmap <Leader>pr
-	unmap <Leader>bt
-
-	unmap <F5>
-	unmap <S-F5>
-	unmap <F10>
-	unmap <F11>
-	unmap <S-F11>
-	unmap <c-q>
-
-	if s:ismswin
-        " so _exrc
-        exec 'so '. g:termdbg_exrc . s:gdbd_port
-        call delete(g:termdbg_exrc . s:gdbd_port)
-	else
-        " so .exrc
-        exec 'so '. g:termdbg_exrc . s:gdbd_port
-        call delete(g:termdbg_exrc . s:gdbd_port)
-	endif
-    stopi
-endf
-
-
-function! TermDBG_call(cmd)
-	let usercmd = a:cmd
+function! TermDBG_SendCmd(cmd)
+    let usercmd = a:cmd
     call add(s:historys, usercmd)
 
     " echomsg "usercmd:".usercmd
@@ -1172,24 +1011,24 @@ endf
 " n - press enter (or double click) in VGDB window
 " c - run Gdb command
 function! TermDBG(cmd, ...)  " [mode]
-	let usercmd = a:cmd
+    let usercmd = a:cmd
     let s:mode = a:0>0 ? a:1 : ''
     if usercmd == ""
         let s:mode = 'i'
     endif
 
-	if s:termdbg_running == 0
+    if s:termdbg_running == 0
         let s:gdbd_port= 30000 + reltime()[1] % 10000
         call s:StartDebug(usercmd)
-		call TermDBG_open()
+        call TermDBG_open()
 
-		return
-	endif
+        return
+    endif
 
-	if s:termdbg_running == 0
-		echomsg "termdbg is not running"
-		return
-	endif
+    if s:termdbg_running == 0
+        echomsg "termdbg is not running"
+        return
+    endif
 
     if -1 == bufwinnr(s:termdbg_bufname)
         call TermDBG_toggle_window()
@@ -1197,14 +1036,14 @@ function! TermDBG(cmd, ...)  " [mode]
     endif
 
     " echomsg "usercmd[".usercmd."]"
-	if s:dbg == 'gdb' && usercmd =~ '^\s*(gdb)' 
-		let usercmd = substitute(usercmd, '^\s*(gdb)\s*', '', '')
+    if s:dbg == 'gdb' && usercmd =~ '^\s*(gdb)' 
+        let usercmd = substitute(usercmd, '^\s*(gdb)\s*', '', '')
     elseif s:dbg == 'gdb' && usercmd =~ '^\s*>\s*' 
         let usercmd = substitute(usercmd, '^\s*>\s*', '', '')
         " echomsg "usercmd2". usercmd
-	endif
+    endif
 
-    call TermDBG_call(usercmd)
+    call TermDBG_SendCmd(usercmd)
 
 endf
 
@@ -1240,17 +1079,17 @@ function! TermDBG_Btoggle(forDisable)
 endf
 
 function! TermDBG_jump()
-	call s:gotoTgtWin()
-	let key = s:TermDBG_curpos()
-"	call TermDBG("@tb ".key." ; ju ".key)
-"	call TermDBG("set $rbp1=$rbp; set $rsp1=$rsp; @tb ".key." ; ju ".key . "; set $rsp=$rsp1; set $rbp=$rbp1")
-	call TermDBG(".ju ".key)
+    call win_gotoid(s:startwin)
+    let key = s:TermDBG_curpos()
+    "	call TermDBG("@tb ".key." ; ju ".key)
+    "	call TermDBG("set $rbp1=$rbp; set $rsp1=$rsp; @tb ".key." ; ju ".key . "; set $rsp=$rsp1; set $rbp=$rbp1")
+    call TermDBG(".ju ".key)
 endf
 
 function! TermDBG_runToCursur()
-	call s:gotoTgtWin()
-	let key = s:TermDBG_curpos()
-	call TermDBG("@tb ".key." ; c")
+    call win_gotoid(s:startwin)
+    let key = s:TermDBG_curpos()
+    call TermDBG("@tb ".key." ; c")
 endf
 
 function! TermDBG_isPrompt()
@@ -1373,19 +1212,11 @@ function TermDBG_KeyS()
     exec "normal dd"
     call append('$', s:termdbg_prompt)
     $
-	starti!
+    starti!
 endfunction
 
-function! TermDBG_balloonExpr()
-	return TermDBG_call('.p '.v:beval_text)
-" 	return 'Cursor is at line ' . v:beval_lnum .
-" 		\', column ' . v:beval_col .
-" 		\ ' of file ' .  bufname(v:beval_bufnr) .
-" 		\ ' on word "' . v:beval_text . '"'
-endf
-
 function! TermDBG_foldTextExpr()
-	return getline(v:foldstart) . ' ' . substitute(getline(v:foldstart+1), '\v^\s+', '', '') . ' ... (' . (v:foldend-v:foldstart-1) . ' lines)'
+    return getline(v:foldstart) . ' ' . substitute(getline(v:foldstart+1), '\v^\s+', '', '') . ' ... (' . (v:foldend-v:foldstart-1) . ' lines)'
 endfunction
 
 " if the value is a pointer ( var = 0x...), expand it by "TermDBG p *var"
@@ -1396,77 +1227,47 @@ endfunction
 "  ...
 " }
 function! TermDBG_expandPointerExpr()
-	if ! s:mymatch(getline('.'), '\v((\$|\w)+) \=.{-0,} 0x')
-		return 0
-	endif
-	let cmd = s:match[1]
-	let lastln = line('.')
-	while 1
-		normal [z
-		if line('.') == lastln
-			break
-		endif
-		let lastln = line('.')
+    if ! s:mymatch(getline('.'), '\v((\$|\w)+) \=.{-0,} 0x')
+        return 0
+    endif
+    let cmd = s:match[1]
+    let lastln = line('.')
+    while 1
+        normal [z
+        if line('.') == lastln
+            break
+        endif
+        let lastln = line('.')
 
-		if ! s:mymatch(getline('.'), '\v(([<>$]|\w)+) \=')
-			return 0
-		endif
-		" '<...>' means the base class. Just ignore it. Example:
-" (OBserverDBMCInterface) $4 = {
-"   <__DBMC_ObserverA> = {
-"     members of __DBMC_ObserverA:
-"     m_pEnv = 0x378de60
-"   }, <No data fields>}
+        if ! s:mymatch(getline('.'), '\v(([<>$]|\w)+) \=')
+            return 0
+        endif
+        " '<...>' means the base class. Just ignore it. Example:
+        " (OBserverDBMCInterface) $4 = {
+        "   <__DBMC_ObserverA> = {
+        "     members of __DBMC_ObserverA:
+        "     m_pEnv = 0x378de60
+        "   }, <No data fields>}
 
-		if s:match[1][0:0] != '<' 
-			let cmd = s:match[1] . '.' . cmd
-		endif
-	endwhile 
-"	call append('$', cmd)
-	exec "TermDBG p *" . cmd
-	if foldlevel('.') > 0
-		" goto beginning of the fold and close it
-		normal [zzc
-		" ensure all folds for this var are closed
-		foldclose!
-	endif
-	return 1
+        if s:match[1][0:0] != '<' 
+            let cmd = s:match[1] . '.' . cmd
+        endif
+    endwhile 
+    "	call append('$', cmd)
+    exec "TermDBG p *" . cmd
+    if foldlevel('.') > 0
+        " goto beginning of the fold and close it
+        normal [zzc
+        " ensure all folds for this var are closed
+        foldclose!
+    endif
+    return 1
 endf
 
-let s:help_open = 0
-let s:help_text_short = [
-			\ '" Press ? for help',
-			\ ]
-
-let s:help_text = s:help_text_short
-
-function s:update_help_text()
-    if s:help_open
-        let s:help_text = [
-            \ '<F5> 	- run or continue (c)',
-            \ '<S-F5> 	- stop debugging (kill)',
-            \ '<F10> 	- next',
-            \ '<F11> 	- step into',
-            \ '<S-F11> - step out (finish)',
-            \ '<C-F10>	- run to cursor (tb and c)',
-            \ '<F9> 	- toggle breakpoint on current line',
-            \ '<C-F9> 	- toggle enable/disable breakpoint on current line',
-            \ '\ju or <C-S-F10> - set next statement (tb and jump)',
-            \ '<C-P>   - view variable under the cursor (.p)',
-            \ '<TAB>   - trigger complete ',
-            \ ]
-    else
-        let s:help_text = s:help_text_short
-    endif
-endfunction
-if !exists('g:termdbg_enable_help')
-    let g:termdbg_enable_help = 1
-endif
-
 function TermDBG_toggle_help()
-	if !g:termdbg_enable_help
-		return
-	endif
+    if !g:termdbg_enable_help
+        return
+    endif
 
     let s:help_open = !s:help_open
     silent exec '1,' . len(s:help_text) . 'd _'
@@ -1478,7 +1279,7 @@ endfunction
 function s:TermDBG_gotoInput()
     " exec "InsertLeave"
     exec "normal G"
-	starti!
+    starti!
 endfunction
 
 
@@ -1486,72 +1287,24 @@ fun! TermDBG_Compl()
 
     let usercmd = getline('.')
     if s:dbg == 'gdb' && usercmd =~ '^\s*(gdb)' 
-    let usercmd = substitute(usercmd, '^\s*(gdb)\s*', '', '')
-    let usercmd = substitute(usercmd, '*', '', '') "fixed *pointer
-    let usercmd = 'complete ' .  usercmd
+        let usercmd = substitute(usercmd, '^\s*(gdb)\s*', '', '')
+        let usercmd = substitute(usercmd, '*', '', '') "fixed *pointer
+        let usercmd = 'complete ' .  usercmd
     endif
-    " call TermDBG_call_and_return(usercmd)
 
-    call TermDBG_call(usercmd)
+    call TermDBG_SendCmd(usercmd)
 
     return ''
 endfunc
-fun! TermDBG_Complete(findstart, base)
-
-       " let usercmd = getline('.')
-       " if s:dbg == 'gdb' && usercmd =~ '^\s*(gdb)' 
-           " let usercmd = substitute(usercmd, '^\s*(gdb)\s*', '', '')
-           " let usercmd = substitute(usercmd, '*', '', '') "fixed *pointer
-           " let usercmd = 'complete ' .  usercmd
-       " endif
-        " call TermDBG_call_and_return(usercmd)
-"    if a:findstart
-"
-"        let usercmd = getline('.')
-"        if s:dbg == 'gdb' && usercmd =~ '^\s*(gdb)' 
-"            let usercmd = substitute(usercmd, '^\s*(gdb)\s*', '', '')
-"            let usercmd = substitute(usercmd, '*', '', '') "fixed *pointer
-"            let usercmd = 'complete ' .  usercmd
-"        endif
-"        " let s:completers = split(TermDBG_call_and_return(usercmd), "\n")
-"        " let s:completers = TermDBG_call_and_return(usercmd)
-"        call TermDBG_call_and_return(usercmd)
-"
-"        " sleep
-"        " locate the start of the word
-"        " let line = getline('.')
-"        " let start = col('.') - 1
-"        " while start > 0 && line[start - 1] =~ '\S' && line[start-1] != '*' "fixed *pointer
-"            " let start -= 1
-"        " endwhile
-"        " return start
-"    else
-"        " find s:completers matching the "a:base"
-"        " let res = []
-"        " for m in (s:completers)
-"            " echo "m=".m
-"            " if a:base == '' 
-"                " return res
-"            " endif
-"
-"            " if m =~ '^' . a:base
-"                " call add(res, m)
-"            " endif
-"
-"            " if m =~ '^\a\+\s\+' . a:base
-"                " call add(res, substitute(m, '^\a*\s*', '', ''))
-"            " endif
-"        " endfor
-"        " return res
-"        return ''
-"    endif
-endfun
 
 command! -nargs=* -complete=file TermDBG :call TermDBG(<q-args>)
 " directly show result; must run after TermDBG is running
-command! -nargs=* -complete=file TermDBGcall :echo TermDBG_call(<q-args>)
+command! -nargs=* -complete=file TermDBGcall :echo TermDBG_SendCmd(<q-args>)
 
 command -nargs=* -complete=file TD call s:StartDebug(<q-args>)
+
+command TermDBGStop call TermDBG_SendKey("\<c-c>")
 map <silent> <F5> :TermDBG<cr>
+map <silent> <c-c> :TermDBGStop<cr>
 
 " vim: set foldmethod=marker 
