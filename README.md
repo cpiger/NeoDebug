@@ -10,17 +10,27 @@ It opens a DebugConsole window in vim that allows user to type gdb command direc
 and gdb output is redirected to this windows.
 
 Screenshot:
+1. Gdb command directly input and show result.
 ![Screenshot](https://github.com/cpiger/NeoDebug/blob/master/NeoDebug1.png)
+
+2. Vim Style complete.
 ![Vim style complete](https://github.com/cpiger/NeoDebug/blob/master/NeoDebugComplete.png)
+
+3. BallonShow.
 ![ballonshow](https://github.com/cpiger/NeoDebug/blob/master/NeoDebugBallonShow.png)
 
 
 ## Installation
 
 1. You need install sed (and of course gdb).
+
 2. Use your preferred installation method for Vim plugins.
+
    With vim-plug that would mean to add the following to your vimrc:
+
    Plug 'cpiger/NeoDebug'
+
+=========================================================
 
 My dev environment:
 - Windows: 
@@ -30,6 +40,8 @@ My dev environment:
 - Linux:
  - Gdb 7.12.1-48.fc25
  - Vim vim-X11-8.0.1171-1.fc25.x86_64
+
+=========================================================
 
 ## Quick usage
 
@@ -54,7 +66,7 @@ The following shortcuts is applied that is similar to MSVC:
     <TAB>   - trigger complete 
 
 ## Thanks
-   skyshore2001
-   (https://github.com/skyshore2001/vgdb-vim)
-   Bram Moolenaar 
-   (vim80\pack\dist\opt\termdebug\plugin\termdebug.vim)
+skyshore2001
+(https://github.com/skyshore2001/vgdb-vim)
+Bram Moolenaar 
+(vim80\pack\dist\opt\termdebug\plugin\termdebug.vim)
