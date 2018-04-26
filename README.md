@@ -11,13 +11,19 @@ and gdb output is redirected to this windows.
 
 Screenshot:
 1. Gdb command directly input and show result.
+
 ![Screenshot](https://github.com/cpiger/NeoDebug/blob/master/NeoDebug1.png)
 
+
 2. Vim Style complete.
+
 ![Vim style complete](https://github.com/cpiger/NeoDebug/blob/master/NeoDebugComplete.png)
 
+
 3. BallonShow.
+
 ![ballonshow](https://github.com/cpiger/NeoDebug/blob/master/NeoDebugBallonShow.png)
+
 
 
 ## Installation
