@@ -1,0 +1,33 @@
+*NeoDebug.txt*	The Vim Gdb Frontend Apr 26, 2018
+
+Author:    scott <cpiger@qq.com>
+
+==============================================================================
+1. Contents						*NeoDebug-contents* {{{1
+
+	1. Contents......................: |NeoDebug-contents|
+	2. NeoDebug Manual.................: |NeoDebug|
+	3. NeoDebug Usage..................: |NeoDebug-usage|
+	     Example.....................: |NeoDebug-example|
+	4. NeoDebug History................: |NeoDebug-history|
+
+
+==============================================================================
+2. NeoDebug Manual					*NeoDebug* {{{1
+							*NeoDebug-manual*
+
+==============================================================================
+3. NeoDebug Usage						*NeoDebug-usage* {{{1
+
+STARTING						*NeoDebug-start* {{{2
+:NeoDebug           (open a console buffer,and you can directly input gdb
+                     command to debug the program)       *NeoDebug-:NeoDebug*
+
+EXAMPLES						*NeoDebug-example* {{{2
+see screnshot https://github.com/cpiger/NeoDebug
+
+==============================================================================
+4. History						*NeoDebug-history* {{{1
+
+ ---------------------------------------------------------------------
+vim:tw=78:ts=8:ft=help:fdm=marker
