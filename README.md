@@ -73,6 +73,10 @@ The following shortcuts is applied that is similar to MSVC:
 
 ## Thanks
 skyshore2001
+
 (https://github.com/skyshore2001/vgdb-vim)
+
+
 Bram Moolenaar 
+
 (vim80\pack\dist\opt\termdebug\plugin\termdebug.vim)
