@@ -111,7 +111,7 @@ func s:StartDebug(cmd)
     " call s:SendCommand('-gdb-set mi-async on')
     call s:SendCommand('set mi-async on')
     if s:ismswin
-        " call s:SendCommand('set new-console on')
+        call s:SendCommand('set new-console on')
     endif
     call s:SendCommand('set print pretty on')
     call s:SendCommand('set breakpoint pending on')
@@ -181,7 +181,7 @@ let s:completer_skip_flag = 0
 let s:appendline = ''
 " Handle a message received from gdb on the GDB/MI interface.
 func s:CommOutput(chan, msg)
-    " echomsg "a:msg:".a:msg
+    echomsg "a:msg:".a:msg
     if 1
 
         let s:curwin = winnr()
@@ -230,20 +230,26 @@ func s:CommOutput(chan, msg)
             call s:goto_console_win()
             if gdb_line =~ '^\~" >"' 
                 call append(line("$"), strpart(gdb_line, 2, strlen(gdb_line)-3))
-            " elseif gdb_line =~ '^\~"\S\+' 
+                " elseif gdb_line =~ '^\~"\S\+' 
             elseif gdb_line =~ '^\~"' 
                 let s:appendline .= strpart(gdb_line, 2, strlen(gdb_line)-3)
                 if gdb_line =~ '\\n"\_$'
                     " echomsg "s:append_file:".s:appendline
-                    call append(line("$"), substitute(s:appendline, '\\n\|\\032\\032', '', 'g'))
+                    let s:appendline = substitute(s:appendline, '\\n\|\\032\\032', '', 'g')
+                    let s:appendline = substitute(s:appendline, '\\"', '"', 'g')
+                    call append(line("$"), s:appendline)
                     let s:appendline = ''
                 endif
-            endif
-                
-            if gdb_line == s:termdbg_prompt
-                call append(line("$"), gdb_line)
+            elseif gdb_line =~ '^\^error,msg='
+                let s:append_err =  substitute(a:msg, '.*msg="\(.*\)"', '\1', '')
+                call append(line("$"), s:append_err)
+            elseif gdb_line == s:termdbg_prompt
+                if getline("$") != s:termdbg_prompt
+                    call append(line("$"), gdb_line)
+                endif
             endif
 
+            "vim bug  on linux ?
             if s:isunix
                 if gdb_line =~ '^\(\*stopped\)'
                     call append(line("$"), s:termdbg_prompt)
