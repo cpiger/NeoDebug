@@ -178,6 +178,7 @@ func s:EndDebug(job, status)
 endfunc
 
 let s:completer_skip_flag = 0
+let s:appendline = ''
 " Handle a message received from gdb on the GDB/MI interface.
 func s:CommOutput(chan, msg)
     " echomsg "a:msg:".a:msg
@@ -211,26 +212,44 @@ func s:CommOutput(chan, msg)
 
         if gdb_line != '' && s:completer_skip_flag == 0
             " Handle 
-            if gdb_line =~ '\(\*stopped\|\*running\|=thread-selected\)'
+            if gdb_line =~ '^\(\*stopped\|\*running\|=thread-selected\)'
                 call s:HandleCursor(gdb_line)
-            elseif gdb_line =~ '\^done,bkpt=' || gdb_line =~ '=breakpoint-created,'
+            elseif gdb_line =~ '^\^done,bkpt=' || gdb_line =~ '=breakpoint-created,'
                 call s:HandleNewBreakpoint(gdb_line)
-            elseif gdb_line =~ '=breakpoint-deleted,'
+            elseif gdb_line =~ '^=breakpoint-deleted,'
                 call s:HandleBreakpointDelete(gdb_line)
-            elseif gdb_line =~ '\^done,value='
+            elseif gdb_line =~ '^\^done,value='
                 call s:HandleEvaluate(gdb_line)
-            elseif gdb_line =~ '\^error,msg='
+            elseif gdb_line =~ '^\^error,msg='
                 call s:HandleError(gdb_line)
             elseif gdb_line == "(gdb) "
                 let gdb_line = s:termdbg_prompt
             endif
 
+            " echomsg "gdb_line:".gdb_line
             call s:goto_console_win()
             if gdb_line =~ '^\~" >"' 
                 call append(line("$"), strpart(gdb_line, 2, strlen(gdb_line)-3))
-            else
+            " elseif gdb_line =~ '^\~"\S\+' 
+            elseif gdb_line =~ '^\~"' 
+                let s:appendline .= strpart(gdb_line, 2, strlen(gdb_line)-3)
+                if gdb_line =~ '\\n"\_$'
+                    " echomsg "s:append_file:".s:appendline
+                    call append(line("$"), substitute(s:appendline, '\\n\|\\032\\032', '', 'g'))
+                    let s:appendline = ''
+                endif
+            endif
+                
+            if gdb_line == s:termdbg_prompt
                 call append(line("$"), gdb_line)
             endif
+
+            if s:isunix
+                if gdb_line =~ '^\(\*stopped\)'
+                    call append(line("$"), s:termdbg_prompt)
+                endif
+            endif
+
             $
             starti!
             redraw
