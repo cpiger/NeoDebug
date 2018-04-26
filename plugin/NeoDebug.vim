@@ -12,6 +12,10 @@ if !exists('g:neodbg_debugger')
     let g:neodbg_debugger = 'gdb'
 endif
 
+if !exists('g:neodbg_ballonshow_with_print')
+    let g:neodbg_ballonshow_with_print = 0
+endif
+
 if !exists('g:neodbg_debuginfo')
     let g:neodbg_debuginfo = 0
 endif
@@ -273,9 +277,11 @@ func s:HandleOutput(chan, msg)
                 let s:appendline = ''
             endif
         elseif gdb_line =~ '^\^error,msg='
-            let s:append_err =  substitute(a:msg, '.*msg="\(.*\)"', '\1', '')
-            let s:append_err =  substitute(s:append_err, '\\"', '"', 'g')
-            call append(line("$"), s:append_err)
+            if gdb_line =~ '^\^error,msg="The program'
+                let s:append_err =  substitute(a:msg, '.*msg="\(.*\)"', '\1', '')
+                let s:append_err =  substitute(s:append_err, '\\"', '"', 'g')
+                call append(line("$"), s:append_err)
+            endif
         elseif gdb_line == s:neodbg_prompt
             if getline("$") != s:neodbg_prompt
                 call append(line("$"), gdb_line)
@@ -456,8 +462,10 @@ func! NeoDebugBalloonExpr()
     endif
 
     " for GotoConsoleWindow to display also
-    call s:SendCommand('p '. v:beval_text)
-    call s:SendCommand('p '. s:evalexpr)
+    if g:neodbg_ballonshow_with_print == 1
+        call s:SendCommand('p '. v:beval_text)
+        call s:SendCommand('p '. s:evalexpr)
+    endif
 
     return s:evalFromBalloonExprResult
 
@@ -1148,13 +1156,14 @@ function! s:Jump()
     let key = s:CursorPos()
     "	call NeoDebug("@tb ".key." ; ju ".key)
     "	call NeoDebug("set $rbp1=$rbp; set $rsp1=$rsp; @tb ".key." ; ju ".key . "; set $rsp=$rsp1; set $rbp=$rbp1")
-    call NeoDebug(".ju ".key)
+    call NeoDebug("ju ".key)
 endf
 
 function! s:RunToCursur()
     call win_gotoid(s:startwin)
     let key = s:CursorPos()
-    call NeoDebug("@tb ".key." ; c")
+    call NeoDebug("tb ".key)
+    call NeoDebug("c")
 endf
 
 function s:GotoInput()
