@@ -1,13 +1,13 @@
 """""""""""""""""""""""""""""""""""""""""""""""""""""""
-" NeoDebug - Vim plugin for interface to gdb from 
-" Maintainer: scott (pigscott@qq.com)
+" NeoDebug - Vim plugin for interface to gdb from Vim 
+" Maintainer: scott (cpiger@qq.com)
 "
 """""""""""""""""""""""""""""""""""""""""""""""""""""""
 " In case this gets loaded twice.
 if exists(':NeoDebug')
     finish
 endif
-" Name of the gdb command, defaults to "gdb".
+" Name of the NeoDebug command, defaults to "gdb".
 if !exists('g:neodbg_debugger')
     let g:neodbg_debugger = 'gdb'
 endif
@@ -16,85 +16,42 @@ if !exists('g:neodbg_debuginfo')
     let g:neodbg_debuginfo = 0
 endif
 
-let s:pc_id = 12
-let s:break_id = 13
-let s:stopped = 1
-
-let s:breakpoints = {}
-let s:comm_msg = ''
-" =======================================================
 let s:ismswin=has('win32')
 let s:isunix = has('unix')
 
 let s:neodbg_winheight = 15
-let s:neodbg_bufname = "__NeoDebug__"
+let s:neodbg_bufname = "__DebugConsole__"
 let s:neodbg_prompt = '(gdb) '
-let s:dbg = 'gdb'
 let g:neodbg_exrc = $HOME.'/neodbg_exrc'
-
 let s:gdbd_port = 30777 
 let s:neodbg_running = 0
 
 let s:completers = []
 let s:historys = []
 
-let s:help_open = 0
+let s:pc_id = 12
+let s:break_id = 13
+let s:stopped = 1
+let s:breakpoints = {}
+
+let s:help_open = 1
 let s:help_text_short = [
 			\ '" Press ? for help',
 			\ ]
 
 let s:help_text = s:help_text_short
 
-
-let s:match = []
-function! s:mymatch(expr, pat)
-    let s:match = matchlist(a:expr, a:pat)
-    return len(s:match) >0
-endf
-" if the value is a pointer ( var = 0x...), expand it by "NeoDebug p *var"
-" e.g. $11 = (CDBMEnv *) 0x387f6d0
-" e.g.  
-" (CDBMEnv) $22 = {
-"  m_pTempTables = 0x37c6830,
-"  ...
-" }
-function! NeoDebug_expandPointerExpr()
-    if ! s:mymatch(getline('.'), '\v((\$|\w)+) \=.{-0,} 0x')
-        return 0
+function s:toggle_help()
+    if !g:neodbg_enable_help
+        return
     endif
-    let cmd = s:match[1]
-    let lastln = line('.')
-    while 1
-        normal [z
-        if line('.') == lastln
-            break
-        endif
-        let lastln = line('.')
 
-        if ! s:mymatch(getline('.'), '\v(([<>$]|\w)+) \=')
-            return 0
-        endif
-        " '<...>' means the base class. Just ignore it. Example:
-        " (OBserverDBMCInterface) $4 = {
-        "   <__DBMC_ObserverA> = {
-        "     members of __DBMC_ObserverA:
-        "     m_pEnv = 0x378de60
-        "   }, <No data fields>}
-
-        if s:match[1][0:0] != '<' 
-            let cmd = s:match[1] . '.' . cmd
-        endif
-    endwhile 
-    "	call append('$', cmd)
-    exec "NeoDebug p *" . cmd
-    if foldlevel('.') > 0
-        " goto beginning of the fold and close it
-        normal [zzc
-        " ensure all folds for this var are closed
-        foldclose!
-    endif
-    return 1
-endf
+    let s:help_open = !s:help_open
+    silent exec '1,' . len(s:help_text) . 'd _'
+    call s:update_help_text()
+    silent call append ( 0, s:help_text )
+    silent keepjumps normal! gg
+endfunction
 
 function s:update_help_text()
     if s:help_open
@@ -120,21 +77,17 @@ if !exists('g:neodbg_enable_help')
 endif
 
 " mode: i|n|c|<empty>
-" i - input command in VGDB window and press enter
-" n - press enter (or double click) in VGDB window
+" i - input command in console window and press enter
+" n - press enter (or double click) in console window
 " c - run Gdb command
 function! NeoDebug(cmd, ...)  " [mode]
     let usercmd = a:cmd
-    " let s:mode = a:0>0 ? a:1 : ''
-    " if usercmd == ""
-        " let s:mode = 'i'
-    " endif
+    let mode = a:0>0 ? a:1 : ''
 
     if s:neodbg_running == 0
         let s:gdbd_port= 30000 + reltime()[1] % 10000
         call s:NeoDebugStart(usercmd)
-        call NeoDebug_open()
-
+        call OpenConsole()
         return
     endif
 
@@ -144,34 +97,21 @@ function! NeoDebug(cmd, ...)  " [mode]
     endif
 
     if -1 == bufwinnr(s:neodbg_bufname)
-        call s:neodbg_toggle_window()
+        call s:ToggleConsoleWindow()
         return
     endif
 
     " echomsg "usercmd[".usercmd."]"
-    if s:dbg == 'gdb' && usercmd =~ '^\s*(gdb)' 
+    if g:neodbg_debugger == 'gdb' && usercmd =~ '^\s*(gdb)' 
         let usercmd = substitute(usercmd, '^\s*(gdb)\s*', '', '')
-    elseif s:dbg == 'gdb' && usercmd =~ '^\s*>\s*' 
+    elseif g:neodbg_debugger == 'gdb' && usercmd =~ '^\s*>\s*' 
         let usercmd = substitute(usercmd, '^\s*>\s*', '', '')
-        " echomsg "usercmd2". usercmd
+        " echomsg "usercmd2[".usercmd."]"
     endif
 
-    call NeoDebugSendCmd(usercmd)
-
+    call s:SendCommand(usercmd)
 endf
 
-function s:neodbg_toggle_help()
-    if !g:neodbg_enable_help
-        return
-    endif
-
-    let s:help_open = !s:help_open
-    silent exec '1,' . len(s:help_text) . 'd _'
-    call s:update_help_text()
-    silent call append ( 0, s:help_text )
-    silent keepjumps normal! gg
-endfunction
-" =======================================================
 func s:NeoDebugStart(cmd)
     let s:startwin = win_getid(winnr())
     let s:startsigncolumn = &signcolumn
@@ -191,7 +131,7 @@ func s:NeoDebugStart(cmd)
     " Create a hidden terminal window to communicate with gdb
     if 1
         let s:commjob = job_start(cmd, {
-                    \ 'out_cb' : function('s:NeoDebugOutput'),
+                    \ 'out_cb' : function('s:HandleOutput'),
                     \ 'exit_cb': function('s:NeoDebugEnd'),
                     \ })
 
@@ -243,7 +183,7 @@ func s:NeoDebugEnd(job, status)
     sign unplace *
 
     " If gdb window is open then close it.
-    call s:GotoConsoleWin()
+    call s:GotoConsoleWindow()
     quit
 
     exe 'bwipe! ' . bufnr(s:neodbg_bufname)
@@ -274,8 +214,9 @@ endfunc
 
 let s:completer_skip_flag = 0
 let s:appendline = ''
+let s:comm_msg = ''
 " Handle a message received from gdb on the GDB/MI interface.
-func s:NeoDebugOutput(chan, msg)
+func s:HandleOutput(chan, msg)
     if g:neodbg_debuginfo == 1
         echomsg "<GDB>:".a:msg
     endif
@@ -318,7 +259,7 @@ func s:NeoDebugOutput(chan, msg)
         endif
 
         " echomsg "gdb_line:".gdb_line
-        call s:GotoConsoleWin()
+        call s:GotoConsoleWindow()
         if gdb_line =~ '^\~" >"' 
             call append(line("$"), strpart(gdb_line, 2, strlen(gdb_line)-3))
             " elseif gdb_line =~ '^\~"\S\+' 
@@ -360,6 +301,111 @@ func s:NeoDebugOutput(chan, msg)
     call win_gotoid(cur_wid)
 
 endfunc
+
+" NOTE: this function will be called by neodbg script.
+function! OpenConsole()
+    " save current setting and restore when neodbg quits via 'so .exrc'
+    " exec 'mk! '
+    exec 'mk! ' . g:neodbg_exrc . s:gdbd_port
+    "delete line set runtimepath for missing some functions after neodbg quit
+    " silent exec '!start /b sed -i "/set runtimepath/d" ' . g:neodbg_exrc . s:gdbd_port
+    silent exec '!start /b sed -i "/set /d" ' . g:neodbg_exrc . s:gdbd_port
+    let sed_tmp = fnamemodify(g:neodbg_exrc . s:gdbd_port, ":p:h")
+    silent exec '!start /b rm -f '. sed_tmp . '/sed*'   
+
+    set nocursorline
+    set nocursorcolumn
+
+    call OpenConsoleWindow()
+
+    " Mark the buffer as a scratch buffer
+    setlocal buftype=nofile
+    " We need buffer content hold
+    " setlocal bufhidden=delete
+    "i mode disable mouse
+    " setlocal mouse=nvch
+    setlocal complete=.
+    setlocal noswapfile
+    setlocal nowrap
+    setlocal nobuflisted
+    setlocal nonumber
+    setlocal winfixheight
+    setlocal cursorline
+
+    setlocal foldcolumn=2
+    setlocal foldtext=NeoDebugFoldTextExpr()
+    setlocal foldmarker={,}
+    setlocal foldmethod=marker
+
+    call s:InstallCommandsHotkeys()
+
+    let s:neodbg_running = 1
+
+    call NeoDebug("") " get init msg
+    starti!
+    " call cursor(0, 7)
+
+    setl completefunc=NeoDebugComplete
+endfunction
+
+" Get ready for communication
+function! OpenConsoleWindow()
+    let bufnum = bufnr(s:neodbg_bufname)
+
+    if bufnum == -1
+        " Create a new buffer
+        let wcmd = s:neodbg_bufname
+    else
+        " Edit the existing buffer
+        let wcmd = '+buffer' . bufnum
+    endif
+
+    " Create the tag explorer window
+    exe 'silent!  botright ' . s:neodbg_winheight . 'split ' . wcmd
+    if line('$') <= 1 && g:neodbg_enable_help
+        silent call append ( 0, s:help_text )
+    endif
+    call s:InstallWinbar()
+endfunction
+
+function CloseConsoleWindow()
+    let winnr = bufwinnr(s:neodbg_bufname)
+    if winnr != -1
+        call s:GotoConsoleWindow()
+        let s:neodbg_save_cursor = getpos(".")
+        close
+        return 1
+    endif
+    return 0
+endfunction
+
+function s:ToggleConsoleWindow()
+    if  s:neodbg_running == 0
+        return
+    endif
+    let result = CloseConsoleWindow()
+    if result == 0
+        call s:GotoConsoleWindow()
+        call setpos('.', s:neodbg_save_cursor)
+    endif
+endfunction
+
+function! s:GotoConsoleWindow()
+    if bufname("%") == s:neodbg_bufname
+        return
+    endif
+    let neodbg_winnr = bufwinnr(s:neodbg_bufname)
+    if neodbg_winnr == -1
+        " if multi-tab or the buffer is hidden
+        call OpenConsoleWindow()
+        let neodbg_winnr = bufwinnr(s:neodbg_bufname)
+    endif
+    exec neodbg_winnr . "wincmd w"
+endf
+
+function! NeoDebugFoldTextExpr()
+    return getline(v:foldstart) . ' ' . substitute(getline(v:foldstart+1), '\v^\s+', '', '') . ' ... (' . (v:foldend-v:foldstart-1) . ' lines)'
+endfunction
 
 " Show a balloon with information of the variable under the mouse pointer,
 " if there is any.
@@ -409,13 +455,114 @@ func! NeoDebugBalloonExpr()
 
     endif
 
-    " for GotoConsoleWin to display also
+    " for GotoConsoleWindow to display also
     call s:SendCommand('p '. v:beval_text)
     call s:SendCommand('p '. s:evalexpr)
 
     return s:evalFromBalloonExprResult
 
 endfunc
+
+fun! NeoDebugComplete(findstart, base)
+
+    if a:findstart
+
+        let usercmd = getline('.')
+        if g:neodbg_debugger == 'gdb' && usercmd =~ '^\s*(gdb)' 
+            let usercmd = substitute(usercmd, '^\s*(gdb)\s*', '', '')
+            let usercmd = substitute(usercmd, '*', '', '') "fixed *pointer
+            let usercmd = 'complete ' .  usercmd
+        endif
+
+        call s:SendCommand(usercmd)
+
+        let output = ch_readraw(s:chan)
+        let s:completers = []
+        while output != "(gdb) "
+            if output =~ '\~"' 
+                let completer = strpart(output, 2, strlen(output)-5) 
+                " echomsg completer
+                call add(s:completers, completer)
+            endif
+            let output = ch_readraw(s:chan)
+        endw
+
+        " locate the start of the word
+        let line = getline('.')
+        let start = col('.') - 1
+        while start > 0 && line[start - 1] =~ '\S' && line[start-1] != '*' "fixed *pointer
+            let start -= 1
+        endwhile
+        return start
+    else
+        " find s:completers matching the "a:base"
+        let res = []
+        for m in (s:completers)
+            if a:base == '' 
+                return res
+            endif
+
+            if m =~ '^' . a:base
+                call add(res, m)
+            endif
+
+            if m =~ '^\a\+\s\+' . a:base
+                call add(res, substitute(m, '^\a*\s*', '', ''))
+            endif
+        endfor
+        return res
+    endif
+endfun
+
+let s:match = []
+function! s:mymatch(expr, pat)
+    let s:match = matchlist(a:expr, a:pat)
+    return len(s:match) >0
+endf
+" if the value is a pointer ( var = 0x...), expand it by "NeoDebug p *var"
+" e.g. $11 = (CDBMEnv *) 0x387f6d0
+" e.g.  
+" (CDBMEnv) $22 = {
+"  m_pTempTables = 0x37c6830,
+"  ...
+" }
+function! NeoDebugExpandPointerExpr()
+    if ! s:mymatch(getline('.'), '\v((\$|\w)+) \=.{-0,} 0x')
+        return 0
+    endif
+    let cmd = s:match[1]
+    let lastln = line('.')
+    while 1
+        normal [z
+        if line('.') == lastln
+            break
+        endif
+        let lastln = line('.')
+
+        if ! s:mymatch(getline('.'), '\v(([<>$]|\w)+) \=')
+            return 0
+        endif
+        " '<...>' means the base class. Just ignore it. Example:
+        " (OBserverDBMCInterface) $4 = {
+        "   <__DBMC_ObserverA> = {
+        "     members of __DBMC_ObserverA:
+        "     m_pEnv = 0x378de60
+        "   }, <No data fields>}
+
+        if s:match[1][0:0] != '<' 
+            let cmd = s:match[1] . '.' . cmd
+        endif
+    endwhile 
+    "	call append('$', cmd)
+    exec "NeoDebug p *" . cmd
+    if foldlevel('.') > 0
+        " goto beginning of the fold and close it
+        normal [zzc
+        " ensure all folds for this var are closed
+        foldclose!
+    endif
+    return 1
+endf
 
 " Install commands in the current window to control the debugger.
 func s:InstallCommandsHotkeys()
@@ -450,77 +597,77 @@ func s:InstallCommandsHotkeys()
     endif
 
 
-    hi NeoDebugBreakPoint    guibg=darkblue  ctermbg=darkblue term=reverse 
-    hi NeoDebugDisabledBreak guibg=lightblue guifg=black ctermbg=lightblue ctermfg=black
-    hi NeoDebugPC            guibg=Orange    guifg=black gui=bold ctermbg=Yellow ctermfg=black
+    hi NeoDbgBreakPoint    guibg=darkblue  ctermbg=darkblue term=reverse 
+    hi NeoDbgDisabledBreak guibg=lightblue guifg=black ctermbg=lightblue ctermfg=black
+    hi NeoDbgPC            guibg=Orange    guifg=black gui=bold ctermbg=Yellow ctermfg=black
 
-    " hi NeoDebugBreakPoint guibg=darkred guifg=white ctermbg=darkred ctermfg=white
-    " hi NeoDebugDisabledBreak guibg=lightred guifg=black ctermbg=lightred ctermfg=black
+    " hi NeoDbgBreakPoint guibg=darkred guifg=white ctermbg=darkred ctermfg=white
+    " hi NeoDbgDisabledBreak guibg=lightred guifg=black ctermbg=lightred ctermfg=black
 
-    sign define termdbgBP  linehl=NeoDebugBreakPoint    text=B> texthl=NeoDebugBreakPoint
-    sign define termdbgDBP linehl=NeoDebugDisabledBreak text=b> texthl=NeoDebugDisabledBreak
-    sign define termdbgPC  linehl=NeoDebugPC            text=>> texthl=NeoDebugPC
+    sign define NeoDebugBP  linehl=NeoDbgBreakPoint    text=B> texthl=NeoDbgBreakPoint
+    sign define NeoDebugDBP linehl=NeoDbgDisabledBreak text=b> texthl=NeoDbgDisabledBreak
+    sign define NeoDebugPC  linehl=NeoDbgPC            text=>> texthl=NeoDbgPC
 
-    " highlight termdbgGoto guifg=Blue
-    hi def link termdbgKey Statement
-    hi def link termdbgHiLn Statement
-    hi def link termdbgGoto Underlined
-    hi def link neodbgPtr Underlined
-    hi def link neodbgFrame LineNr
-    hi def link termdbgCmd Macro
+    " highlight NeoDebugGoto guifg=Blue
+    hi def link NeoDebugKey Statement
+    hi def link NeoDebugHiLn Statement
+    hi def link NeoDebugGoto Underlined
+    hi def link NeoDebugPtr Underlined
+    hi def link NeoDebugFrame LineNr
+    hi def link NeoDebugCmd Macro
     " syntax
-    syn keyword termdbgKey Function Breakpoint Catchpoint 
-    syn match termdbgFrame /\v^#\d+ .*/ contains=termdbgGoto
-    syn match termdbgGoto /\v<at [^()]+:\d+|file .+, line \d+/
-    syn match termdbgCmd /^(gdb).*/
-    syn match termdbgPtr /\v(^|\s+)\zs\$?\w+ \=.{-0,} 0x\w+/
+    syn keyword NeoDebugKey Function Breakpoint Catchpoint 
+    syn match NeoDebugFrame /\v^#\d+ .*/ contains=NeoDebugGoto
+    syn match NeoDebugGoto /\v<at [^()]+:\d+|file .+, line \d+/
+    syn match NeoDebugCmd /^(gdb).*/
+    syn match NeoDebugPtr /\v(^|\s+)\zs\$?\w+ \=.{-0,} 0x\w+/
     " highlight the whole line for 
     " returns for info threads | info break | finish | watchpoint
-    syn match termdbgHiLn /\v^\s*(Id\s+Target Id|Num\s+Type|Value returned is|(Old|New) value =|Hardware watchpoint).*$/
+    syn match NeoDebugHiLn /\v^\s*(Id\s+Target Id|Num\s+Type|Value returned is|(Old|New) value =|Hardware watchpoint).*$/
 
     " syntax for perldb
-    syn match termdbgCmd /^\s*DB<.*/
-    "	syn match termdbgFrame /\v^#\d+ .*/ contains=termdbgGoto
-    syn match termdbgGoto /\v from file ['`].+' line \d+/
-    syn match termdbgGoto /\v at ([^ ]+) line (\d+)/
-    syn match termdbgGoto /\v at \(eval \d+\)..[^:]+:\d+/
+    syn match NeoDebugCmd /^\s*DB<.*/
+    "	syn match NeoDebugFrame /\v^#\d+ .*/ contains=NeoDebugGoto
+    syn match NeoDebugGoto /\v from file ['`].+' line \d+/
+    syn match NeoDebugGoto /\v at ([^ ]+) line (\d+)/
+    syn match NeoDebugGoto /\v at \(eval \d+\)..[^:]+:\d+/
 
 
-    " shortcut in termdbg window
-    inoremap <expr><buffer><BS>  NeoDebug_isModifiableX() ? "\<BS>"  : ""
-    inoremap <expr><buffer><c-h> NeoDebug_isModifiableX() ? "\<c-h>" : ""
-    noremap <buffer> <silent> i :call NeoDebug_Keyi()<cr>
-    noremap <buffer> <silent> I :call NeoDebug_KeyI()<cr>
-    noremap <buffer> <silent> a :call NeoDebug_Keya()<cr>
-    noremap <buffer> <silent> A :call NeoDebug_KeyA()<cr>
-    noremap <buffer> <silent> o :call NeoDebug_Keyo()<cr>
-    noremap <buffer> <silent> O :call NeoDebug_Keyo()<cr>
-    noremap <expr><buffer>x  NeoDebug_isModifiablex() ? "x" : ""  
-    noremap <expr><buffer>X  NeoDebug_isModifiableX() ? "X" : ""  
+    " shortcut in NeoDebug window
+    inoremap <expr><buffer><BS>  <SID>IsModifiableX() ? "\<BS>"  : ""
+    inoremap <expr><buffer><c-h> <SID>IsModifiableX() ? "\<c-h>" : ""
+    noremap <buffer> <silent> i :call <SID>NeoDebugKeyi()<cr>
+    noremap <buffer> <silent> I :call <SID>NeoDebugKeyI()<cr>
+    noremap <buffer> <silent> a :call <SID>NeoDebugKeya()<cr>
+    noremap <buffer> <silent> A :call <SID>NeoDebugKeyA()<cr>
+    noremap <buffer> <silent> o :call <SID>NeoDebugKeyo()<cr>
+    noremap <buffer> <silent> O :call <SID>NeoDebugKeyo()<cr>
+    noremap <expr><buffer>x  <SID>IsModifiablex() ? "x" : ""  
+    noremap <expr><buffer>X  <SID>IsModifiableX() ? "X" : ""  
     vnoremap <buffer>x ""
 
-    noremap <expr><buffer>d  NeoDebug_isModifiablex() ? "d" : ""  
-    noremap <expr><buffer>u  NeoDebug_isModifiablex() ? "u" : ""  
-    noremap <expr><buffer>U  NeoDebug_isModifiablex() ? "U" : ""  
+    noremap <expr><buffer>d  <SID>IsModifiablex() ? "d" : ""  
+    noremap <expr><buffer>u  <SID>IsModifiablex() ? "u" : ""  
+    noremap <expr><buffer>U  <SID>IsModifiablex() ? "U" : ""  
 
-    noremap <expr><buffer>s  NeoDebug_isModifiablex() ? "s" : ""  
-    noremap <buffer> <silent> S :call NeoDebug_KeyS()<cr>
+    noremap <expr><buffer>s  <SID>IsModifiablex() ? "s" : ""  
+    noremap <buffer> <silent> S :call <SID>NeoDebugKeyS()<cr>
 
-    noremap <expr><buffer>c  NeoDebug_isModifiablex() ? "c" : ""  
-    noremap <expr><buffer>C  NeoDebug_isModifiablex() ? "C" : ""  
+    noremap <expr><buffer>c  <SID>IsModifiablex() ? "c" : ""  
+    noremap <expr><buffer>C  <SID>IsModifiablex() ? "C" : ""  
 
-    noremap <expr><buffer>p  NeoDebug_isModifiable() ? "p" : ""  
-    noremap <expr><buffer>P  NeoDebug_isModifiablex() ? "P" : ""  
+    noremap <expr><buffer>p  <SID>IsModifiable() ? "p" : ""  
+    noremap <expr><buffer>P  <SID>IsModifiablex() ? "P" : ""  
 
 
-    inoremap <expr><buffer><Del>        NeoDebug_isModifiablex() ? "<Del>"    : ""  
-    noremap <expr><buffer><Del>         NeoDebug_isModifiablex() ? "<Del>"    : ""  
-    noremap <expr><buffer><Insert>      NeoDebug_isModifiableX() ? "<Insert>" : ""  
+    inoremap <expr><buffer><Del>        <SID>IsModifiablex() ? "<Del>"    : ""  
+    noremap <expr><buffer><Del>         <SID>IsModifiablex() ? "<Del>"    : ""  
+    noremap <expr><buffer><Insert>      <SID>IsModifiableX() ? "<Insert>" : ""  
 
-    inoremap <expr><buffer><Left>       NeoDebug_isModifiableX() ? "<Left>"   : ""  
-    noremap <expr><buffer><Left>        NeoDebug_isModifiableX() ? "<Left>"   : ""  
-    inoremap <expr><buffer><Right>      NeoDebug_isModifiablex() ? "<Right>"  : ""  
-    noremap <expr><buffer><Right>       NeoDebug_isModifiablex() ? "<Right>"  : ""  
+    inoremap <expr><buffer><Left>       <SID>IsModifiableX() ? "<Left>"   : ""  
+    noremap <expr><buffer><Left>        <SID>IsModifiableX() ? "<Left>"   : ""  
+    inoremap <expr><buffer><Right>      <SID>IsModifiablex() ? "<Right>"  : ""  
+    noremap <expr><buffer><Right>       <SID>IsModifiablex() ? "<Right>"  : ""  
 
     inoremap <expr><buffer><Home>       "" 
     inoremap <expr><buffer><End>        ""
@@ -536,9 +683,9 @@ func s:InstallCommandsHotkeys()
     inoremap <expr><buffer><PageDown>   ""
 
 
-    noremap <buffer><silent>? :call s:neodbg_toggle_help()<cr>
-    " inoremap <buffer> <silent> <c-i> <c-o>:call s:neodbg_gotoinput()<cr>
-    " noremap <buffer> <silent> <c-i> :call s:neodbg_gotoinput()<cr>
+    noremap <buffer><silent>? :call <SID>toggle_help()<cr>
+    " inoremap <buffer> <silent> <c-i> <c-o>:call <SID>GotoInput()<cr>
+    " noremap <buffer> <silent> <c-i> :call <SID>GotoInput()<cr>
 
     inoremap <expr><buffer> <silent> <c-p>  "\<c-x><c-l>"
     inoremap <expr><buffer> <silent> <c-r>  "\<c-x><c-n>"
@@ -548,7 +695,7 @@ func s:InstallCommandsHotkeys()
     noremap <buffer><silent> <Tab> ""
     noremap <buffer><silent> <S-Tab> ""
 
-    noremap <buffer><silent> <ESC> :call NeoDebug_close_window()<CR>
+    noremap <buffer><silent> <ESC> :call CloseConsoleWindow()<CR>
 
     inoremap <expr><buffer> <silent> <CR> pumvisible() ? "\<c-y><c-o>:call NeoDebug(getline('.'), 'i')<cr>" : "<c-o>:call NeoDebug(getline('.'), 'i')<cr>"
     imap <buffer> <silent> <2-LeftMouse> <cr>
@@ -562,18 +709,14 @@ func s:InstallCommandsHotkeys()
     " inoremap <buffer> <silent> <TAB> <C-X><C-L>
     "nnoremap <buffer> <silent> : <C-W>p:
 
-    nmap <silent> <F9>	         :call ToggleBreakpoint()<CR>
-    map! <silent> <F9>	         <c-o>:call ToggleBreakpoint()<CR>
+    nmap <silent> <F9>	         :call <SID>ToggleBreakpoint()<CR>
+    map! <silent> <F9>	         <c-o>:call <SID>ToggleBreakpoint()<CR>
 
-    " nmap <silent> <F9>	         :call NeoDebug_Btoggle(0)<CR>
-    nmap <silent> <C-F9>	     :call NeoDebug_Btoggle(1)<CR>
-    " map! <silent> <F9>	         <c-o>:call NeoDebug_Btoggle(0)<CR>
-    map! <silent> <C-F9>         <c-o>:call NeoDebug_Btoggle(1)<CR>
-    nmap <silent> <Leader>ju	 :call NeoDebug_jump()<CR>
-    nmap <silent> <C-S-F10>		 :call NeoDebug_jump()<CR>
-    nmap <silent> <C-F10>        :call NeoDebug_runToCursur()<CR>
-    map! <silent> <C-S-F10>		 <c-o>:call NeoDebug_jump()<CR>
-    map! <silent> <C-F10>        <c-o>:call NeoDebug_runToCursur()<CR>
+    nmap <silent> <Leader>ju	 :call <SID>Jump()<CR>
+    nmap <silent> <C-S-F10>		 :call <SID>Jump()<CR>
+    nmap <silent> <C-F10>        :call <SID>RunToCursur()<CR>
+    map! <silent> <C-S-F10>		 <c-o>:call <SID>Jump()<CR>
+    map! <silent> <C-F10>        <c-o>:call <SID>RunToCursur()<CR>
     nmap <silent> <F6>           :call NeoDebug("run")<CR>
     nmap <silent> <C-P>	         :NeoDebug p <C-R><C-W><CR>
     vmap <silent> <C-P>	         y:NeoDebug p <C-R>0<CR>
@@ -587,7 +730,7 @@ func s:InstallCommandsHotkeys()
     nmap <silent> <F11>   :NeoDebug s<cr>
     nmap <silent> <S-F11> :NeoDebug finish<cr>
     nmap <silent> <c-q> :NeoDebug q<cr>
-    nmap <c-c> :call s:SendKey("\<c-c>")<cr>
+    nmap <c-c> :call <SID>SendKey("\<c-c>")<cr>
 
     " map! <silent> <F5>    <c-o>:NeoDebug c<cr>i
     " map! <silent> <S-F5>  <c-o>:NeoDebug k<cr>i
@@ -598,17 +741,16 @@ func s:InstallCommandsHotkeys()
     map! <silent> <S-F11> <c-o>:NeoDebug finish<cr>
     map! <silent> <c-q>   <c-o>:NeoDebug q<cr>
 
-    amenu NeoDebug.Toggle\ breakpoint<tab>F9			:call NeoDebug_Btoggle(0)<CR>
     amenu NeoDebug.Run/Continue<tab>F5 					:NeoDebug c<CR>
     amenu NeoDebug.Step\ into<tab>F11					:NeoDebug s<CR>
     amenu NeoDebug.Next<tab>F10							:NeoDebug n<CR>
     amenu NeoDebug.Step\ out<tab>Shift-F11				:NeoDebug finish<CR>
-    amenu NeoDebug.Run\ to\ cursor<tab>Ctrl-F10			:call NeoDebug_runToCursur()<CR>
+    amenu NeoDebug.Run\ to\ cursor<tab>Ctrl-F10			:call <SID>RunToCursur()<CR>
     amenu NeoDebug.Stop\ debugging\ (Kill)<tab>Shift-F5	:NeoDebug k<CR>
     amenu NeoDebug.-sep1- :
 
     amenu NeoDebug.Show\ callstack<tab>\\bt				:call NeoDebug("where")<CR>
-    amenu NeoDebug.Set\ next\ statement\ (Jump)<tab>Ctrl-Shift-F10\ or\ \\ju 	:call NeoDebug_jump()<CR>
+    amenu NeoDebug.Set\ next\ statement\ (Jump)<tab>Ctrl-Shift-F10\ or\ \\ju 	:call <SID>Jump()<CR>
     amenu NeoDebug.Top\ frame 						:call NeoDebug("frame 0")<CR>
     amenu NeoDebug.Callstack\ up 					:call NeoDebug("up")<CR>
     amenu NeoDebug.Callstack\ down 					:call NeoDebug("down")<CR>
@@ -692,10 +834,9 @@ func s:DeleteCommandsHotkeys()
     for key in keys(s:breakpoints)
         exe 'sign unplace ' . (s:break_id + key)
     endfor
-    sign undefine termdbgPC
-    sign undefine termdbgBP
+    sign undefine NeoDebugPC
+    sign undefine NeoDebugBP
     "unlet s:breakpoints
-
 
     unmap <F9>
     unmap <C-F9>
@@ -724,7 +865,49 @@ func s:DeleteCommandsHotkeys()
     stopi
 endfunc
 
-" :Break - Set a breakpoint at the cursor position.
+" :Next, :Continue, etc - send a command to gdb
+func s:SendCommand(cmd)
+    let usercmd = a:cmd
+    call add(s:historys, usercmd)
+    call ch_sendraw(s:commjob, usercmd . "\n")
+endfunc
+
+func s:SendKey(key)
+    call ch_sendraw(s:commjob, a:key)
+endfunc
+
+func s:SendEval(expr)
+    call s:SendCommand('-data-evaluate-expression "' . a:expr . '"')
+    let s:evalexpr = a:expr
+endfunc
+
+func s:PlaceSign(nr, entry)
+    exe 'sign place ' . (s:break_id + a:nr) . ' line=' . a:entry['lnum'] . ' name=NeoDebugBP file=' . a:entry['fname']
+    let a:entry['placed'] = 1
+endfunc
+
+" Handle a BufRead autocommand event: place any signs.
+func s:BufferRead()
+    " let fname = expand('<afile>:p')
+    let fname = fnamemodify(expand('<afile>:t'), ":p")
+    for [nr, entry] in items(s:breakpoints)
+        if entry['fname'] == fname
+            call s:PlaceSign(nr, entry)
+        endif
+    endfor
+endfunc
+
+" Handle a BufUnload autocommand event: unplace any signs.
+func s:BufferUnload()
+    " let fname = expand('<afile>:p')
+    let fname = fnamemodify(expand('<afile>:t'), ":p")
+    for [nr, entry] in items(s:breakpoints)
+        if entry['fname'] == fname
+            let entry['placed'] = 0
+        endif
+    endfor
+endfunc
+
 func s:SetBreakpoint()
     " Setting a breakpoint may not work while the program is running.
     " Interrupt to make it work.
@@ -743,7 +926,6 @@ func s:SetBreakpoint()
     endif
 endfunc
 
-" :Clear - Delete a breakpoint at the cursor position.
 func s:ClearBreakpoint()
     " let fname = fnameescape(expand('%:p'))
     let fname = fnameescape(expand('%:t'))
@@ -764,7 +946,7 @@ func s:ClearBreakpoint()
     endfor
 endfunc
 
-func ToggleBreakpoint()
+func s:ToggleBreakpoint()
     call win_gotoid(s:startwin)
     let fname = fnameescape(expand('%:t'))
     let fname = fnamemodify(fnamemodify(fname, ":t"), ":p")
@@ -782,15 +964,6 @@ func ToggleBreakpoint()
     call s:SetBreakpoint()
 endfunc
 
-" :Next, :Continue, etc - send a command to gdb
-func s:SendCommand(cmd)
-    call ch_sendraw(s:commjob, a:cmd . "\n")
-endfunc
-
-func s:SendKey(key)
-    call ch_sendraw(s:commjob, a:key)
-endfunc
-
 func s:Run(args)
     if a:args != ''
         call s:SendCommand('-exec-arguments ' . a:args)
@@ -798,12 +971,6 @@ func s:Run(args)
     call s:SendCommand('-exec-run')
 endfunc
 
-func s:SendEval(expr)
-    call s:SendCommand('-data-evaluate-expression "' . a:expr . '"')
-    let s:evalexpr = a:expr
-endfunc
-
-" :Evaluate - evaluate what is under the cursor
 func s:Evaluate(range, arg)
     if a:arg != ''
         let expr = a:arg
@@ -866,13 +1033,6 @@ func s:HandleCursor(msg)
 
     if win_gotoid(s:startwin)
         let fname = substitute(a:msg, '.*fullname="\([^"]*\)".*', '\1', '')
-
-        " if -1 == match(fname, '\\\\')
-        " let fname = fname
-        " else
-        " let fname = substitute(fname, '\\\\','\\', 'g')
-        " endif
-
         let fname = fnamemodify(fnamemodify(fname, ":t"), ":p")
 
         if a:msg =~ '\(\*stopped\|=thread-selected\)' && filereadable(fname)
@@ -890,7 +1050,7 @@ func s:HandleCursor(msg)
                 " echomsg "HandleCursor:fnamelnum=".fname.lnum
                 exe lnum
                 exe 'sign unplace ' . s:pc_id
-                exe 'sign place ' . s:pc_id . ' line=' . lnum . ' name=termdbgPC file=' . fname
+                exe 'sign place ' . s:pc_id . ' line=' . lnum . ' name=NeoDebugPC file=' . fname
                 setlocal signcolumn=yes
             endif
         else
@@ -954,11 +1114,6 @@ func s:HandleNewBreakpoint(msg)
     redraw
 endfunc
 
-func s:PlaceSign(nr, entry)
-    exe 'sign place ' . (s:break_id + a:nr) . ' line=' . a:entry['lnum'] . ' name=termdbgBP file=' . a:entry['fname']
-    let a:entry['placed'] = 1
-endfunc
-
 " Handle deleting a breakpoint
 " Will remove the sign that shows the breakpoint
 func s:HandleBreakpointDelete(msg)
@@ -976,238 +1131,39 @@ func s:HandleBreakpointDelete(msg)
     endif
 endfunc
 
-" Handle a BufferRead autocommand event: place any signs.
-func s:BufferRead()
-    " let fname = expand('<afile>:p')
-    let fname = fnamemodify(expand('<afile>:t'), ":p")
-    for [nr, entry] in items(s:breakpoints)
-        if entry['fname'] == fname
-            call s:PlaceSign(nr, entry)
-        endif
-    endfor
-endfunc
-
-" Handle a BufferUnload autocommand event: unplace any signs.
-func s:BufferUnload()
-    " let fname = expand('<afile>:p')
-    let fname = fnamemodify(expand('<afile>:t'), ":p")
-    for [nr, entry] in items(s:breakpoints)
-        if entry['fname'] == fname
-            let entry['placed'] = 0
-        endif
-    endfor
-endfunc
-
-" ======================================================================================
-" Prevent multiple loading unless: let force_load=1
-
-function! s:GotoConsoleWin()
-    if bufname("%") == s:neodbg_bufname
-        return
-    endif
-    let neodbg_winnr = bufwinnr(s:neodbg_bufname)
-    if neodbg_winnr == -1
-        " if multi-tab or the buffer is hidden
-        call NeoDebug_openWindow()
-        let neodbg_winnr = bufwinnr(s:neodbg_bufname)
-    endif
-    exec neodbg_winnr . "wincmd w"
-endf
-
+" TODO 
 function! s:NeoDebug_bpkey(file, line)
     return a:file . ":" . a:line
 endf
 
-function! s:NeoDebug_curpos()
+function! s:CursorPos()
     " ???? filename ????
     let file = expand("%:t")
     let line = line(".")
     return s:NeoDebug_bpkey(file, line)
 endf
 
-" Get ready for communication
-function! NeoDebug_openWindow()
-    let bufnum = bufnr(s:neodbg_bufname)
-
-    if bufnum == -1
-        " Create a new buffer
-        let wcmd = s:neodbg_bufname
-    else
-        " Edit the existing buffer
-        let wcmd = '+buffer' . bufnum
-    endif
-
-    " Create the tag explorer window
-    exe 'silent!  botright ' . s:neodbg_winheight . 'split ' . wcmd
-    if line('$') <= 1 && g:neodbg_enable_help
-        silent call append ( 0, s:help_text )
-    endif
-    call s:InstallWinbar()
-endfunction
-
-" NOTE: this function will be called by neodbg script.
-function! NeoDebug_open()
-    " save current setting and restore when neodbg quits via 'so .exrc'
-    " exec 'mk! '
-    exec 'mk! ' . g:neodbg_exrc . s:gdbd_port
-    "delete line set runtimepath for missing some functions after neodbg quit
-    " silent exec '!start /b sed -i "/set runtimepath/d" ' . g:neodbg_exrc . s:gdbd_port
-    silent exec '!start /b sed -i "/set /d" ' . g:neodbg_exrc . s:gdbd_port
-    let sed_tmp = fnamemodify(g:neodbg_exrc . s:gdbd_port, ":p:h")
-    silent exec '!start /b rm -f '. sed_tmp . '/sed*'   
-
-    set nocursorline
-    set nocursorcolumn
-
-    call NeoDebug_openWindow()
-
-    " Mark the buffer as a scratch buffer
-    setlocal buftype=nofile
-    " We need buffer content hold
-    " setlocal bufhidden=delete
-    "i mode disable mouse
-    " setlocal mouse=nvch
-    setlocal complete=.
-    setlocal noswapfile
-    setlocal nowrap
-    setlocal nobuflisted
-    setlocal nonumber
-    setlocal winfixheight
-    setlocal cursorline
-
-    setlocal foldcolumn=2
-    setlocal foldtext=NeoDebug_foldTextExpr()
-    setlocal foldmarker={,}
-    setlocal foldmethod=marker
-
-    call s:InstallCommandsHotkeys()
-
-    let s:neodbg_running = 1
-
-    " call NeoDebug("init") " get init msg
-    " call NeoDebug("help") " get init msg
-    call NeoDebug("") " get init msg
-    starti!
-    " call cursor(0, 7)
-
-    setl completefunc=NeoDebug_Complete
-    "wincmd p
-endfunction
-
-fun! NeoDebug_Complete(findstart, base)
-
-    if a:findstart
-
-        let usercmd = getline('.')
-        if s:dbg == 'gdb' && usercmd =~ '^\s*(gdb)' 
-            let usercmd = substitute(usercmd, '^\s*(gdb)\s*', '', '')
-            let usercmd = substitute(usercmd, '*', '', '') "fixed *pointer
-            let usercmd = 'complete ' .  usercmd
-        endif
-
-        call s:SendCommand(usercmd)
-
-        let output = ch_readraw(s:chan)
-        let s:completers = []
-        while output != "(gdb) "
-            if output =~ '\~"' 
-                let completer = strpart(output, 2, strlen(output)-5) 
-                " echomsg completer
-                call add(s:completers, completer)
-            endif
-            let output = ch_readraw(s:chan)
-        endw
-
-        " locate the start of the word
-        let line = getline('.')
-        let start = col('.') - 1
-        while start > 0 && line[start - 1] =~ '\S' && line[start-1] != '*' "fixed *pointer
-            let start -= 1
-        endwhile
-        return start
-    else
-        " find s:completers matching the "a:base"
-        let res = []
-        for m in (s:completers)
-            if a:base == '' 
-                return res
-            endif
-
-            if m =~ '^' . a:base
-                call add(res, m)
-            endif
-
-            if m =~ '^\a\+\s\+' . a:base
-                call add(res, substitute(m, '^\a*\s*', '', ''))
-            endif
-        endfor
-        return res
-    endif
-endfun
-
-
-function! NeoDebugSendCmd(cmd)
-    let usercmd = a:cmd
-    call add(s:historys, usercmd)
-
-    " echomsg "usercmd:".usercmd
-    let s:usercmd = usercmd
-
-    call s:SendCommand(a:cmd)
-    return ''
-
-endf
-
-
-function s:neodbg_toggle_window()
-    if  s:neodbg_running == 0
-        return
-    endif
-    let result = NeoDebug_close_window()
-    if result == 0
-        call s:GotoConsoleWin()
-        call setpos('.', s:neodbg_save_cursor)
-    endif
-endfunction
-
-function NeoDebug_close_window()
-    let winnr = bufwinnr(s:neodbg_bufname)
-    if winnr != -1
-        call s:GotoConsoleWin()
-        let s:neodbg_save_cursor = getpos(".")
-        close
-        return 1
-    endif
-    return 0
-endfunction
-
-" Toggle breakpoints
-function! NeoDebug_Btoggle(forDisable)
-endf
-
-function! NeoDebug_jump()
+function! s:Jump()
     call win_gotoid(s:startwin)
-    let key = s:NeoDebug_curpos()
+    let key = s:CursorPos()
     "	call NeoDebug("@tb ".key." ; ju ".key)
     "	call NeoDebug("set $rbp1=$rbp; set $rsp1=$rsp; @tb ".key." ; ju ".key . "; set $rsp=$rsp1; set $rbp=$rbp1")
     call NeoDebug(".ju ".key)
 endf
 
-function! NeoDebug_runToCursur()
+function! s:RunToCursur()
     call win_gotoid(s:startwin)
-    let key = s:NeoDebug_curpos()
+    let key = s:CursorPos()
     call NeoDebug("@tb ".key." ; c")
 endf
 
-function! NeoDebug_isPrompt()
-    if  strpart(s:neodbg_prompt, 0, 5) == strpart(getline("."), 0, 5) && col(".") <= strlen(s:neodbg_prompt)+1 
-        return 1
-    else
-        return 0
-    endif
-endf
+function s:GotoInput()
+    " exec "InsertLeave"
+    exec "normal G"
+    starti!
+endfunction
 
-function! NeoDebug_isModifiable()
+function! s:IsModifiable()
     let pos = getpos(".")  
     let curline = pos[1]
     if  curline == line("$") && strpart(s:neodbg_prompt, 0, 5) == strpart(getline("."), 0, 5) && col(".") >= strlen(s:neodbg_prompt)
@@ -1217,7 +1173,7 @@ function! NeoDebug_isModifiable()
     endif
 endf
 
-function! NeoDebug_isModifiablex()
+function! s:IsModifiablex()
     let pos = getpos(".")  
     let curline = pos[1]
     if  curline == line("$") && strpart(s:neodbg_prompt, 0, 5) == strpart(getline("."), 0, 5) && col(".") >= strlen(s:neodbg_prompt)+1
@@ -1227,7 +1183,7 @@ function! NeoDebug_isModifiablex()
         return 0
     endif
 endf
-function! NeoDebug_isModifiableX()
+function! s:IsModifiableX()
     let pos = getpos(".")  
     let curline = pos[1]
     if  (curline == line("$") && strpart(s:neodbg_prompt, 0, 5) == strpart(getline("."), 0, 5) && col(".") >= strlen(s:neodbg_prompt)+2)
@@ -1237,7 +1193,7 @@ function! NeoDebug_isModifiableX()
         return 0
     endif
 endf
-fun! NeoDebug_Keyi()
+fun! s:NeoDebugKeyi()
     let pos = getpos(".")  
     let curline = pos[1]
     let curcol = pos[2]
@@ -1248,11 +1204,11 @@ fun! NeoDebug_Keyi()
             starti!
         endif
     else
-        silent call s:neodbg_gotoinput()
+        silent call s:GotoInput()
     endif
 endf
 
-fun! NeoDebug_KeyI()
+fun! s:NeoDebugKeyI()
     let pos = getpos(".")  
     let curline = pos[1]
     let curcol = pos[2]
@@ -1261,11 +1217,11 @@ fun! NeoDebug_KeyI()
         call setpos(".", pos)
         starti
     else
-        silent call s:neodbg_gotoinput()
+        silent call s:GotoInput()
     endif
 endf
 
-fun! NeoDebug_Keya()
+fun! s:NeoDebugKeya()
     let linecon = getline("$")
     let pos = getpos(".")  
     let curline = pos[1]
@@ -1287,22 +1243,22 @@ fun! NeoDebug_Keya()
             starti!
         endif
     else
-        silent call s:neodbg_gotoinput()
+        silent call s:GotoInput()
     endif
 endf
 
-fun! NeoDebug_KeyA()
+fun! s:NeoDebugKeyA()
     let pos = getpos(".")  
     let curline = pos[1]
     let curcol = pos[2]
     if curline == line("$")
         starti!
     else
-        silent call s:neodbg_gotoinput()
+        silent call s:GotoInput()
     endif
 endf
 
-function NeoDebug_Keyo()
+function s:NeoDebugKeyo()
     let linecon = getline("$")
     if linecon == s:neodbg_prompt
         exec "normal G"
@@ -1314,7 +1270,7 @@ function NeoDebug_Keyo()
     endif
 endfunction
 
-function NeoDebug_KeyS()
+function NeoDebugKeyS()
     exec "normal G"
     exec "normal dd"
     call append('$', s:neodbg_prompt)
@@ -1322,25 +1278,6 @@ function NeoDebug_KeyS()
     starti!
 endfunction
 
-function! NeoDebug_foldTextExpr()
-    return getline(v:foldstart) . ' ' . substitute(getline(v:foldstart+1), '\v^\s+', '', '') . ' ... (' . (v:foldend-v:foldstart-1) . ' lines)'
-endfunction
-
-
-function s:neodbg_gotoinput()
-    " exec "InsertLeave"
-    exec "normal G"
-    starti!
-endfunction
-
 command! -nargs=* -complete=file NeoDebug :call NeoDebug(<q-args>)
-" directly show result; must run after NeoDebug is running
-command! -nargs=* -complete=file NeoDebugCall :echo NeoDebugSendCmd(<q-args>)
-
-command -nargs=* -complete=file TD call s:NeoDebugStart(<q-args>)
-
-command NeoDebugStop call s:SendKey("\<c-c>")
-map <silent> <F5> :NeoDebug<cr>
-map <silent> <c-c> :NeoDebugStop<cr>
 
 " vim: set foldmethod=marker 
