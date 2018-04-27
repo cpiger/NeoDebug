@@ -49,7 +49,7 @@ let s:breakpoints = {}
 " c - run debugger command
 function! NeoDebug(cmd, ...)  " [mode]
     let usercmd = a:cmd
-    let mode = a:0>0 ? a:1 : ''
+    let s:mode = a:0>0 ? a:1 : ''
 
     if s:neodbg_running == 0
         let s:neodbg_port= 30000 + reltime()[1] % 10000
@@ -90,8 +90,43 @@ function! NeoDebug(cmd, ...)  " [mode]
         endif
     elseif g:neodbg_debugger == 'gdb' && usercmd =~ '^\s*>\s*' 
         let usercmd = substitute(usercmd, '^\s*>\s*', '', '')
-        echomsg "usercmd2[".usercmd."]"
+        " echomsg "usercmd2[".usercmd."]"
     endif
+
+    " goto frame
+    " #0  factor (n=1, r=0x22fe48) at factor/factor.c:4
+    " #1  0x00000000004015e2 in main (argc=1, argv=0x5b3480) at sample.c:12
+    if s:MyMatch(usercmd, '\v^#(\d+)') " && s:debugging
+        let usercmd = "frame " . s:match[1]
+        call s:SendCommand(usercmd)
+        return
+    endif
+
+    " goto thread and show frames
+    " Id   Target Id         Frame 
+    " 2    Thread 83608.0x14dd0 0x00000000773c22da in ntdll!RtlInitString () from C:\\windows\\SYSTEM32\tdll.dll
+    " 1    Thread 83608.0x1535c factor (n=1, r=0x22fe48) at factor/factor.c:5
+    if s:MyMatch(usercmd, '\v^\s+(\d+)\s+Thread ') "&& s:debugging
+        let usercmd = "thread " . s:match[1]
+        call s:SendCommand(usercmd)
+        call s:SendCommand("bt")
+        return
+    endif
+
+    " Num     Type           Disp Enb Address            What
+    " 1       breakpoint     keep y   0x00000000004015c4 in main at sample.c:8
+    " 2       breakpoint     keep y   0x00000000004015d4 in main at sample.c:12
+    " 3       breakpoint     keep y   0x00000000004015e2 in main at sample.c:13
+    if s:MyMatch(usercmd, '\v<at %(0x\S+ )?(..[^:]*):(\d+)') || s:MyMatch(usercmd, '\vfile ([^,]+), line (\d+)') || s:MyMatch(usercmd, '\v\((..[^:]*):(\d+)\)')
+        call s:NeoDebugGotoFile(s:match[1], s:match[2])
+        return
+    endif
+
+    if s:mode == 'n'  " mode n: jump to source or current callstack, dont exec other gdb commands
+        call NeoDebugExpandPointerExpr()
+        return
+    endif
+
 
     call s:SendCommand(usercmd)
 endf
@@ -100,6 +135,7 @@ function! NeoDebugStop(cmd)
     call job_stop(s:commjob)
 endfunction
 
+let s:neodbg_init_flag = 0
 func s:NeoDebugStart(cmd)
     let s:startwin = win_getid(winnr())
     let s:startsigncolumn = &signcolumn
@@ -131,6 +167,7 @@ func s:NeoDebugStart(cmd)
     " Interpret commands while the target is running.  This should usualy only be
     " exec-interrupt, since many commands don't work properly while the target is
     " running.
+    let s:neodbg_init_flag = 1
     call s:SendCommand('set mi-async on')
     if s:ismswin
         call s:SendCommand('set new-console on')
@@ -138,6 +175,7 @@ func s:NeoDebugStart(cmd)
     call s:SendCommand('set print pretty on')
     call s:SendCommand('set breakpoint pending on')
     call s:SendCommand('set pagination off')
+    let s:neodbg_init_flag = 0
 
     " Install debugger commands in the text window.
     call win_gotoid(s:startwin)
@@ -208,7 +246,7 @@ func s:HandleOutput(chan, msg)
         echomsg "<GDB>:".a:msg
     endif
 
-    let s:mode = mode()
+    let cur_mode = mode()
     let cur_wid = win_getid(winnr())
 
     " do not output completers
@@ -281,7 +319,7 @@ func s:HandleOutput(chan, msg)
         $
         starti!
         redraw
-        if s:mode != "i"
+        if cur_mode != "i"
             stopi
         endif
 
@@ -358,6 +396,7 @@ func! NeoDebugBalloonExpr()
 
 endfunc
 
+let s:neodbg_complete_flag = 0
 fun! NeoDebugComplete(findstart, base)
 
     if a:findstart
@@ -376,7 +415,6 @@ fun! NeoDebugComplete(findstart, base)
         while output != g:neodbg_prompt
             if output =~ '\~"' 
                 let completer = strpart(output, 2, strlen(output)-5) 
-                " echomsg completer
                 call add(s:completers, completer)
             endif
             let output = ch_readraw(s:chan)
@@ -398,6 +436,7 @@ fun! NeoDebugComplete(findstart, base)
             endif
 
             if m =~ '^' . a:base
+                echomsg "m".m
                 call add(res, m)
             endif
 
@@ -421,6 +460,7 @@ endf
 "  m_pTempTables = 0x37c6830,
 "  ...
 " }
+let s:neodbg_pointerexpr_flag = 0
 function! NeoDebugExpandPointerExpr()
     if ! s:MyMatch(getline('.'), '\v((\$|\w)+) \=.{-0,} 0x')
         return 0
@@ -434,7 +474,7 @@ function! NeoDebugExpandPointerExpr()
         endif
         let lastln = line('.')
 
-        if ! s:mymatch(getline('.'), '\v(([<>$]|\w)+) \=')
+        if ! s:MyMatch(getline('.'), '\v(([<>$]|\w)+) \=')
             return 0
         endif
         " '<...>' means the base class. Just ignore it. Example:
@@ -448,8 +488,9 @@ function! NeoDebugExpandPointerExpr()
             let cmd = s:match[1] . '.' . cmd
         endif
     endwhile 
-    "	call append('$', cmd)
-    exec "NeoDebug p *" . cmd
+    let s:neodbg_pointerexpr_flag = 1
+    call s:SendCommand("p *" . cmd)
+    let s:neodbg_pointerexpr_flag = 0
     if foldlevel('.') > 0
         " goto beginning of the fold and close it
         normal [zzc
@@ -701,12 +742,18 @@ endfunc
 func s:SendCommand(cmd)
     " echomsg "<GDB>cmd:[".a:cmd."]"
     let usercmd = a:cmd
-    if usercmd != s:neodbg_cmd_historys[-1]
-        call add(s:neodbg_cmd_historys, usercmd)
+    if usercmd != s:neodbg_cmd_historys[-1] 
+        if -1 == match(usercmd, '^complete')
+            call add(s:neodbg_cmd_historys, usercmd)
+            if s:mode == 'n' && s:neodbg_init_flag == 0
+                call neodebug#GotoConsoleWindow()
+                call setline(line('$'), getline('$').s:neodbg_cmd_historys[-1])
+            endif
+        endif
     else
         if s:neodbg_balloonexpr_flag == 0
             call neodebug#GotoConsoleWindow()
-            call setline(line('.'), getline('.').s:neodbg_cmd_historys[-1])
+            call setline(line('$'), getline('$').s:neodbg_cmd_historys[-1])
         endif
     endif
 
@@ -880,7 +927,13 @@ func s:HandleCursor(msg)
 
     if win_gotoid(s:startwin)
         let fname = substitute(a:msg, '.*fullname="\([^"]*\)".*', '\1', '')
-        let fname = fnamemodify(fnamemodify(fname, ":t"), ":p")
+        " let fname = fnamemodify(fnamemodify(fname, ":t"), ":p")
+        "fix mswin
+        if -1 == match(fname, '\\\\')
+            let fname = fname
+        else
+            let fname = substitute(fname, '\\\\','\\', 'g')
+        endif
 
         if a:msg =~ '\(\*stopped\|=thread-selected\)' && filereadable(fname)
             let lnum = substitute(a:msg, '.*line="\([^"]*\)".*', '\1', '')
@@ -894,7 +947,7 @@ func s:HandleCursor(msg)
                         exe 'edit ' . fnameescape(fname)
                     endif
                 endif
-                " echomsg "HandleCursor:fnamelnum=".fname.lnum
+                " echomsg "HandleCursor:3fnamelnum=".fname.lnum
                 exe lnum
                 exe 'sign unplace ' . s:pc_id
                 exe 'sign place ' . s:pc_id . ' line=' . lnum . ' name=NeoDebugPC file=' . fname
@@ -982,6 +1035,38 @@ endfunc
 function! s:NeoDebug_bpkey(file, line)
     return a:file . ":" . a:line
 endf
+
+function! s:NeoDebugGotoFile(fname, lnum)
+    let fname = a:fname
+    let lnum  = a:lnum
+    let wid = win_getid(winnr())
+
+    if win_gotoid(s:startwin)
+        let fname = fnamemodify(fnamemodify(fname, ":t"), ":p")
+
+        if filereadable(fname)
+            if lnum =~ '^[0-9]*$'
+                if expand('%:p') != fnamemodify(fname, ':p')
+                    if &modified
+                        " TODO: find existing window
+                        exe 'split ' . fnameescape(fname)
+                        let s:startwin = win_getid(winnr())
+                    else
+                        exe 'edit ' . fnameescape(fname)
+                    endif
+                endif
+                exe lnum
+                exe 'sign unplace ' . s:pc_id
+                exe 'sign place ' . s:pc_id . ' line=' . lnum . ' name=NeoDebugPC file=' . fname
+                setlocal signcolumn=yes
+            else
+                exe 'sign unplace ' . s:pc_id
+            endif
+        endif
+
+        call win_gotoid(wid)
+    endif
+endfunction
 
 function! s:CursorPos()
     let file = expand("%:t")
