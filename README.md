@@ -29,9 +29,11 @@ Screenshot:
 
 ![info breakpoints](https://github.com/cpiger/NeoDebug/blob/master/NeoDebugInfoBreakpointsJump.png)
 
-![stack](https://github.com/cpiger/NeoDebug/blob/master/NeoDebugNeoDebugFrameEnter.png)
 
-![threas](https://github.com/cpiger/NeoDebug/blob/master/NeoDebugNeoDebugInfoThreadsHit.png)
+![stack](https://github.com/cpiger/NeoDebug/blob/master/NeoDebugFrameEnter.png)
+
+
+![threas](https://github.com/cpiger/NeoDebug/blob/master/NeoDebugInfoThreadsHit.png)
 
 
 ## Installation
