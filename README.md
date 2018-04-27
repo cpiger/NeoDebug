@@ -25,6 +25,14 @@ Screenshot:
 ![ballonshow](https://github.com/cpiger/NeoDebug/blob/master/NeoDebugBallonShow.png)
 
 
+4. Breakpoints jump, threads, stack
+
+![info breakpoints](https://github.com/cpiger/NeoDebug/blob/master/NeoDebugInfoBreakpointsJump.png)
+
+![stack](https://github.com/cpiger/NeoDebug/blob/master/NeoDebugNeoDebugFrameEnter.png)
+
+![threas](https://github.com/cpiger/NeoDebug/blob/master/NeoDebugNeoDebugInfoThreadsHit.png)
+
 
 ## Installation
 

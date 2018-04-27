@@ -286,6 +286,10 @@ func s:HandleOutput(chan, msg)
 
         " echomsg "debugger_line:".debugger_line
         call neodebug#GotoConsoleWindow()
+        if s:neodbg_sendcmd_flag == 1
+            call setline(line('$'), getline('$').s:neodbg_cmd_historys[-1])
+            let s:neodbg_sendcmd_flag = 0
+        endif
         if debugger_line =~ '^\~" >"' 
             call append(line("$"), strpart(debugger_line, 2, strlen(debugger_line)-3))
             " elseif debugger_line =~ '^\~"\S\+' 
@@ -437,7 +441,6 @@ fun! NeoDebugComplete(findstart, base)
             endif
 
             if m =~ '^' . a:base
-                echomsg "m".m
                 call add(res, m)
             endif
 
@@ -740,6 +743,7 @@ func NeoDebugDeleteCommandsHotkeys()
 endfunc
 
 " :Next, :Continue, etc - send a command to debugger
+let s:neodbg_sendcmd_flag = 0
 func s:SendCommand(cmd)
     " echomsg "<GDB>cmd:[".a:cmd."]"
     let usercmd = a:cmd
@@ -747,14 +751,12 @@ func s:SendCommand(cmd)
         if -1 == match(usercmd, '^complete') && -1 == match(usercmd, '^complete')
             call add(s:neodbg_cmd_historys, usercmd)
             if s:mode == 'n' && s:neodbg_init_flag == 0
-                call neodebug#GotoConsoleWindow()
-                call setline(line('$'), getline('$').s:neodbg_cmd_historys[-1])
+                let s:neodbg_sendcmd_flag = 1
             endif
         endif
     else
         if s:neodbg_balloonexpr_flag == 0 && -1 == match(usercmd, '^set pagination off')
-            call neodebug#GotoConsoleWindow()
-            call setline(line('$'), getline('$').s:neodbg_cmd_historys[-1])
+            let s:neodbg_sendcmd_flag = 1
         endif
     endif
 
@@ -928,7 +930,6 @@ func s:HandleCursor(msg)
 
     if win_gotoid(s:startwin)
         let fname = substitute(a:msg, '.*fullname="\([^"]*\)".*', '\1', '')
-        " let fname = fnamemodify(fnamemodify(fname, ":t"), ":p")
         "fix mswin
         if -1 == match(fname, '\\\\')
             let fname = fname
@@ -986,7 +987,12 @@ func s:HandleNewBreakpoint(msg)
     " echomsg "fname:".fname
     " echomsg "lnum:".lnum
 
-    let fname = fnamemodify(fnamemodify(fname, ":t"), ":p")
+    " fix mswin
+    if -1 == match(fname, '\\\\')
+        let fname = fname
+    else
+        let fname = substitute(fname, '\\\\','\\', 'g')
+    endif
     " echomsg "fname:lnum=".fname.':'.lnum
 
     let entry['fname'] = fname
