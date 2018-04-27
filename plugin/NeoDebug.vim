@@ -20,15 +20,20 @@ if !exists('g:neodbg_debuginfo')
     let g:neodbg_debuginfo = 1
 endif
 
-let s:ismswin=has('win32')
-let s:isunix = has('unix')
+if !exists('g:neodbg_enable_help')
+    let g:neodbg_enable_help = 1
+endif
 
-let s:neodbg_winheight = 15
-let s:neodbg_bufname = "__DebugConsole__"
-let s:neodbg_prompt = '(gdb) '
-let g:neodbg_exrc = $HOME.'/neodbg_exrc'
-let s:gdbd_port = 30777 
+let g:neodbg_console_name = "__DebugConsole__"
+let g:neodbg_console_height = 15
+let g:neodbg_prompt = '(gdb) '
+
 let s:neodbg_running = 0
+let s:neodbg_exrc = $HOME.'/neodbg_exrc'
+let s:neodbg_port = 30777 
+
+let s:ismswin = has('win32')
+let s:isunix = has('unix')
 
 let s:completers = []
 let s:neodbg_cmd_historys = ["first"]
@@ -38,71 +43,43 @@ let s:break_id = 13
 let s:stopped = 1
 let s:breakpoints = {}
 
-let s:help_open = 1
-let s:help_text_short = [
-			\ '" Press ? for help',
-			\ ]
-
-let s:help_text = s:help_text_short
-
-function s:toggle_help()
-    if !g:neodbg_enable_help
-        return
-    endif
-
-    let s:help_open = !s:help_open
-    silent exec '1,' . len(s:help_text) . 'd _'
-    call s:update_help_text()
-    silent call append ( 0, s:help_text )
-    silent keepjumps normal! gg
-endfunction
-
-function s:update_help_text()
-    if s:help_open
-        let s:help_text = [
-            \ '<F5> 	- run or continue (c)',
-            \ '<S-F5> 	- stop debugging (kill)',
-            \ '<F10> 	- next',
-            \ '<F11> 	- step into',
-            \ '<S-F11>  - step out (finish)',
-            \ '<C-F10>	- run to cursor (tb and c)',
-            \ '<F9> 	- toggle breakpoint on current line',
-            \ '<C-F9> 	- toggle enable/disable breakpoint on current line',
-            \ '\ju or <C-S-F10> - set next statement (tb and jump)',
-            \ '<C-P>    - view variable under the cursor (.p)',
-            \ '<TAB>    - trigger complete ',
-            \ '<C-C>    - terminate debugger job',
-            \ ]
-    else
-        let s:help_text = s:help_text_short
-    endif
-endfunction
-if !exists('g:neodbg_enable_help')
-    let g:neodbg_enable_help = 1
-endif
-
 " mode: i|n|c|<empty>
 " i - input command in console window and press enter
 " n - press enter (or double click) in console window
-" c - run Gdb command
+" c - run debugger command
 function! NeoDebug(cmd, ...)  " [mode]
     let usercmd = a:cmd
     let mode = a:0>0 ? a:1 : ''
 
     if s:neodbg_running == 0
-        let s:gdbd_port= 30000 + reltime()[1] % 10000
+        let s:neodbg_port= 30000 + reltime()[1] % 10000
         call s:NeoDebugStart(usercmd)
-        call OpenConsole()
+
+        " save current setting and restore when neodebug quits via 'so .exrc'
+        exec 'mk! ' . s:neodbg_exrc . s:neodbg_port
+        "delete line set runtimepath for missing some functions after neodebug quit
+        " silent exec '!start /b sed -i "/set runtimepath/d" ' . s:neodbg_exrc . s:neodbg_port
+        silent exec '!start /b sed -i "/set /d" ' . s:neodbg_exrc . s:neodbg_port
+        let sed_tmp = fnamemodify(s:neodbg_exrc . s:neodbg_port, ":p:h")
+        silent exec '!start /b rm -f '. sed_tmp . '/sed*'   
+
+        set nocursorline
+        set nocursorcolumn
+
+        call neodebug#OpenConsole()
+
+        let s:neodbg_running = 1
+
         return
     endif
 
     if s:neodbg_running == 0
-        echomsg "neodbg is not running"
+        echomsg "NeoDebug is not running"
         return
     endif
 
-    if -1 == bufwinnr(s:neodbg_bufname)
-        call s:ToggleConsoleWindow()
+    if -1 == bufwinnr(g:neodbg_console_name)
+        call neodebug#ToggleConsoleWindow()
         return
     endif
 
@@ -150,12 +127,11 @@ func s:NeoDebugStart(cmd)
         let s:chan = job_getchannel(s:commjob)  
         let commpty = job_info((s:commjob))['tty_out']
     endif
-    let s:gdbwin = win_getid(winnr())
+    let s:neodebug_console_win = win_getid(winnr())
 
     " Interpret commands while the target is running.  This should usualy only be
     " exec-interrupt, since many commands don't work properly while the target is
     " running.
-    " call s:SendCommand('-gdb-set mi-async on')
     call s:SendCommand('set mi-async on')
     if s:ismswin
         call s:SendCommand('set new-console on')
@@ -194,17 +170,17 @@ func s:NeoDebugEnd(job, status)
 	let s:neodbg_running = 0
     sign unplace *
 
-    " If gdb window is open then close it.
-    call s:GotoConsoleWindow()
+    " If neodebug console window is open then close it.
+    call neodebug#GotoConsoleWindow()
     quit
 
-    exe 'bwipe! ' . bufnr(s:neodbg_bufname)
+    exe 'bwipe! ' . bufnr(g:neodbg_console_name)
 
     let curwinid = win_getid(winnr())
 
     call win_gotoid(s:startwin)
     let &signcolumn = s:startsigncolumn
-    call s:DeleteCommandsHotkeys()
+    call NeoDebugDeleteCommandsHotkeys()
 
     call win_gotoid(curwinid)
     if s:save_columns > 0
@@ -227,7 +203,7 @@ endfunc
 let s:completer_skip_flag = 0
 let s:appendline = ''
 let s:comm_msg = ''
-" Handle a message received from gdb on the GDB/MI interface.
+" Handle a message received from debugger
 func s:HandleOutput(chan, msg)
     if g:neodbg_debuginfo == 1
         echomsg "<GDB>:".a:msg
@@ -246,60 +222,60 @@ func s:HandleOutput(chan, msg)
     endif
 
     " echomsg "s:comm_msg" .s:comm_msg
-    if  "complete" == strpart(s:comm_msg, 2, strlen("complete"))  && ( s:comm_msg =~  '(gdb)')
+    if  "complete" == strpart(s:comm_msg, 2, strlen("complete"))  && ( s:comm_msg =~  g:neodbg_prompt)
         let s:completer_skip_flag = 0
         let s:comm_msg = ''
         return
     endif
 
-    let gdb_line = a:msg
+    let debugger_line = a:msg
 
-    if gdb_line != '' && s:completer_skip_flag == 0
+    if debugger_line != '' && s:completer_skip_flag == 0
         " Handle 
-        if gdb_line =~ '^\(\*stopped\|\*running\|=thread-selected\)'
-            call s:HandleCursor(gdb_line)
-        elseif gdb_line =~ '^\^done,bkpt=' || gdb_line =~ '=breakpoint-created,'
-            call s:HandleNewBreakpoint(gdb_line)
-        elseif gdb_line =~ '^=breakpoint-deleted,'
-            call s:HandleBreakpointDelete(gdb_line)
-        elseif gdb_line =~ '^\^done,value='
-            call s:HandleEvaluate(gdb_line)
-        elseif gdb_line =~ '^\^error,msg='
-            call s:HandleError(gdb_line)
-        elseif gdb_line == "(gdb) "
-            let gdb_line = s:neodbg_prompt
+        if debugger_line =~ '^\(\*stopped\|\*running\|=thread-selected\)'
+            call s:HandleCursor(debugger_line)
+        elseif debugger_line =~ '^\^done,bkpt=' || debugger_line =~ '=breakpoint-created,'
+            call s:HandleNewBreakpoint(debugger_line)
+        elseif debugger_line =~ '^=breakpoint-deleted,'
+            call s:HandleBreakpointDelete(debugger_line)
+        elseif debugger_line =~ '^\^done,value='
+            call s:HandleEvaluate(debugger_line)
+        elseif debugger_line =~ '^\^error,msg='
+            call s:HandleError(debugger_line)
+        elseif debugger_line == g:neodbg_prompt
+            let debugger_line = g:neodbg_prompt
         endif
 
-        " echomsg "gdb_line:".gdb_line
-        call s:GotoConsoleWindow()
-        if gdb_line =~ '^\~" >"' 
-            call append(line("$"), strpart(gdb_line, 2, strlen(gdb_line)-3))
-            " elseif gdb_line =~ '^\~"\S\+' 
-        elseif gdb_line =~ '^\~"' 
-            let s:appendline .= strpart(gdb_line, 2, strlen(gdb_line)-3)
-            if gdb_line =~ '\\n"\_$'
+        " echomsg "debugger_line:".debugger_line
+        call neodebug#GotoConsoleWindow()
+        if debugger_line =~ '^\~" >"' 
+            call append(line("$"), strpart(debugger_line, 2, strlen(debugger_line)-3))
+            " elseif debugger_line =~ '^\~"\S\+' 
+        elseif debugger_line =~ '^\~"' 
+            let s:appendline .= strpart(debugger_line, 2, strlen(debugger_line)-3)
+            if debugger_line =~ '\\n"\_$'
                 " echomsg "s:appendfile:".s:appendline
                 let s:appendline = substitute(s:appendline, '\\n\|\\032\\032', '', 'g')
                 let s:appendline = substitute(s:appendline, '\\"', '"', 'g')
                 call append(line("$"), s:appendline)
                 let s:appendline = ''
             endif
-        elseif gdb_line =~ '^\^error,msg='
-            if gdb_line =~ '^\^error,msg="The program'
+        elseif debugger_line =~ '^\^error,msg='
+            if debugger_line =~ '^\^error,msg="The program'
                 let s:append_err =  substitute(a:msg, '.*msg="\(.*\)"', '\1', '')
                 let s:append_err =  substitute(s:append_err, '\\"', '"', 'g')
                 call append(line("$"), s:append_err)
             endif
-        elseif gdb_line == s:neodbg_prompt
-            if getline("$") != s:neodbg_prompt
-                call append(line("$"), gdb_line)
+        elseif debugger_line == g:neodbg_prompt
+            if getline("$") != g:neodbg_prompt
+                call append(line("$"), debugger_line)
             endif
         endif
 
         "vim bug  on linux ?
         if s:isunix
-            if gdb_line =~ '^\(\*stopped\)'
-                call append(line("$"), s:neodbg_prompt)
+            if debugger_line =~ '^\(\*stopped\)'
+                call append(line("$"), g:neodbg_prompt)
             endif
         endif
 
@@ -316,113 +292,13 @@ func s:HandleOutput(chan, msg)
 
 endfunc
 
-" NOTE: this function will be called by neodbg script.
-function! OpenConsole()
-    " save current setting and restore when neodbg quits via 'so .exrc'
-    " exec 'mk! '
-    exec 'mk! ' . g:neodbg_exrc . s:gdbd_port
-    "delete line set runtimepath for missing some functions after neodbg quit
-    " silent exec '!start /b sed -i "/set runtimepath/d" ' . g:neodbg_exrc . s:gdbd_port
-    silent exec '!start /b sed -i "/set /d" ' . g:neodbg_exrc . s:gdbd_port
-    let sed_tmp = fnamemodify(g:neodbg_exrc . s:gdbd_port, ":p:h")
-    silent exec '!start /b rm -f '. sed_tmp . '/sed*'   
-
-    set nocursorline
-    set nocursorcolumn
-
-    call OpenConsoleWindow()
-
-    " Mark the buffer as a scratch buffer
-    setlocal buftype=nofile
-    " We need buffer content hold
-    " setlocal bufhidden=delete
-    "i mode disable mouse
-    " setlocal mouse=nvch
-    setlocal complete=.
-    setlocal noswapfile
-    setlocal nowrap
-    setlocal nobuflisted
-    setlocal nonumber
-    setlocal winfixheight
-    setlocal cursorline
-
-    setlocal foldcolumn=2
-    setlocal foldtext=NeoDebugFoldTextExpr()
-    setlocal foldmarker={,}
-    setlocal foldmethod=marker
-
-    call s:InstallCommandsHotkeys()
-
-    let s:neodbg_running = 1
-
-    call NeoDebug("") " get init msg
-    starti!
-    " call cursor(0, 7)
-
-    setl completefunc=NeoDebugComplete
-endfunction
-
-" Get ready for communication
-function! OpenConsoleWindow()
-    let bufnum = bufnr(s:neodbg_bufname)
-
-    if bufnum == -1
-        " Create a new buffer
-        let wcmd = s:neodbg_bufname
-    else
-        " Edit the existing buffer
-        let wcmd = '+buffer' . bufnum
-    endif
-
-    " Create the tag explorer window
-    exe 'silent!  botright ' . s:neodbg_winheight . 'split ' . wcmd
-    if line('$') <= 1 && g:neodbg_enable_help
-        silent call append ( 0, s:help_text )
-    endif
-    call s:InstallWinbar()
-endfunction
-
-function CloseConsoleWindow()
-    let winnr = bufwinnr(s:neodbg_bufname)
-    if winnr != -1
-        call s:GotoConsoleWindow()
-        let s:neodbg_save_cursor = getpos(".")
-        close
-        return 1
-    endif
-    return 0
-endfunction
-
-function s:ToggleConsoleWindow()
-    if  s:neodbg_running == 0
-        return
-    endif
-    let result = CloseConsoleWindow()
-    if result == 0
-        call s:GotoConsoleWindow()
-        call setpos('.', s:neodbg_save_cursor)
-    endif
-endfunction
-
-function! s:GotoConsoleWindow()
-    if bufname("%") == s:neodbg_bufname
-        return
-    endif
-    let neodbg_winnr = bufwinnr(s:neodbg_bufname)
-    if neodbg_winnr == -1
-        " if multi-tab or the buffer is hidden
-        call OpenConsoleWindow()
-        let neodbg_winnr = bufwinnr(s:neodbg_bufname)
-    endif
-    exec neodbg_winnr . "wincmd w"
-endf
-
 function! NeoDebugFoldTextExpr()
     return getline(v:foldstart) . ' ' . substitute(getline(v:foldstart+1), '\v^\s+', '', '') . ' ... (' . (v:foldend-v:foldstart-1) . ' lines)'
 endfunction
 
 " Show a balloon with information of the variable under the mouse pointer,
 " if there is any.
+let s:neodbg_balloonexpr_flag = 0
 func! NeoDebugBalloonExpr()
     if v:beval_winid != s:startwin
         return
@@ -430,11 +306,13 @@ func! NeoDebugBalloonExpr()
     let s:evalFromBalloonExpr = 1
     let s:evalFromBalloonExprResult = ''
     let s:ignoreEvalError = 1
+    let s:neodbg_balloonexpr_flag = 1
     call s:SendEval(v:beval_text)
+    let s:neodbg_balloonexpr_flag = 0
 
     let output = ch_readraw(s:chan)
     let alloutput = ''
-    while output != "(gdb) "
+    while output != g:neodbg_prompt
         let alloutput .= output
         let output = ch_readraw(s:chan)
     endw
@@ -452,11 +330,13 @@ func! NeoDebugBalloonExpr()
     if s:evalexpr[0] != '*' && value =~ '^0x' && value != '0x0' && value !~ '"$'
         " Looks like a pointer, also display what it points to.
         let s:ignoreEvalError = 1
+        let s:neodbg_balloonexpr_flag = 1
         call s:SendEval('*' . s:evalexpr)
+        let s:neodbg_balloonexpr_flag = 0
 
         let output = ch_readraw(s:chan)
         let alloutput = ''
-        while output != "(gdb) "
+        while output != g:neodbg_prompt
             let alloutput .= output
             let output = ch_readraw(s:chan)
         endw
@@ -469,7 +349,7 @@ func! NeoDebugBalloonExpr()
 
     endif
 
-    " for GotoConsoleWindow to display also
+    " for neodebug#GotoConsoleWindow to display also
     if g:neodbg_ballonshow_with_print == 1
         call s:SendCommand('p '. v:beval_text)
         call s:SendCommand('p '. s:evalexpr)
@@ -494,7 +374,7 @@ fun! NeoDebugComplete(findstart, base)
 
         let output = ch_readraw(s:chan)
         let s:completers = []
-        while output != "(gdb) "
+        while output != g:neodbg_prompt
             if output =~ '\~"' 
                 let completer = strpart(output, 2, strlen(output)-5) 
                 " echomsg completer
@@ -531,7 +411,7 @@ fun! NeoDebugComplete(findstart, base)
 endfun
 
 let s:match = []
-function! s:mymatch(expr, pat)
+function! s:MyMatch(expr, pat)
     let s:match = matchlist(a:expr, a:pat)
     return len(s:match) >0
 endf
@@ -543,7 +423,7 @@ endf
 "  ...
 " }
 function! NeoDebugExpandPointerExpr()
-    if ! s:mymatch(getline('.'), '\v((\$|\w)+) \=.{-0,} 0x')
+    if ! s:MyMatch(getline('.'), '\v((\$|\w)+) \=.{-0,} 0x')
         return 0
     endif
     let cmd = s:match[1]
@@ -581,7 +461,8 @@ function! NeoDebugExpandPointerExpr()
 endf
 
 " Install commands in the current window to control the debugger.
-func s:InstallCommandsHotkeys()
+func NeoDebugInstallCommandsHotkeys()
+
     command Break call s:SetBreakpoint()
     command Clear call s:ClearBreakpoint()
     command Step call s:SendCommand('-exec-step')
@@ -592,15 +473,14 @@ func s:InstallCommandsHotkeys()
     command Stop call s:SendCommand('-exec-interrupt')
     command Continue call s:SendCommand('-exec-continue')
     command -range -nargs=* Evaluate call s:Evaluate(<range>, <q-args>)
-    command Gdb call win_gotoid(s:gdbwin)
     command Program call win_gotoid(s:ptywin)
-    command Winbar call s:InstallWinbar()
+    command Winbar call NeoDebugInstallWinbar()
 
     " TODO: can the K mapping be restored?
     nnoremap K :Evaluate<CR>
 
     if has('menu') && &mouse != ''
-        call s:InstallWinbar()
+        call NeoDebugInstallWinbar()
 
         if !exists('g:neodbg_popup') || g:neodbg_popup != 0
             let s:saved_mousemodel = &mousemodel
@@ -650,58 +530,10 @@ func s:InstallCommandsHotkeys()
 
 
     " shortcut in NeoDebug window
-    inoremap <expr><buffer><BS>  <SID>IsModifiableX() ? "\<BS>"  : ""
-    inoremap <expr><buffer><c-h> <SID>IsModifiableX() ? "\<c-h>" : ""
-    noremap <buffer> <silent> i :call <SID>NeoDebugKeyi()<cr>
-    noremap <buffer> <silent> I :call <SID>NeoDebugKeyI()<cr>
-    noremap <buffer> <silent> a :call <SID>NeoDebugKeya()<cr>
-    noremap <buffer> <silent> A :call <SID>NeoDebugKeyA()<cr>
-    noremap <buffer> <silent> o :call <SID>NeoDebugKeyo()<cr>
-    noremap <buffer> <silent> O :call <SID>NeoDebugKeyo()<cr>
-    noremap <expr><buffer>x  <SID>IsModifiablex() ? "x" : ""  
-    noremap <expr><buffer>X  <SID>IsModifiableX() ? "X" : ""  
-    vnoremap <buffer>x ""
 
-    noremap <expr><buffer>d  <SID>IsModifiablex() ? "d" : ""  
-    noremap <expr><buffer>u  <SID>IsModifiablex() ? "u" : ""  
-    noremap <expr><buffer>U  <SID>IsModifiablex() ? "U" : ""  
+    call neodebug#CustomConsoleKey()
 
-    noremap <expr><buffer>s  <SID>IsModifiablex() ? "s" : ""  
-    noremap <buffer> <silent> S :call <SID>NeoDebugKeyS()<cr>
-
-    noremap <expr><buffer>c  <SID>IsModifiablex() ? "c" : ""  
-    noremap <expr><buffer>C  <SID>IsModifiablex() ? "C" : ""  
-
-    noremap <expr><buffer>p  <SID>IsModifiable() ? "p" : ""  
-    noremap <expr><buffer>P  <SID>IsModifiablex() ? "P" : ""  
-
-
-    inoremap <expr><buffer><Del>        <SID>IsModifiablex() ? "<Del>"    : ""  
-    noremap <expr><buffer><Del>         <SID>IsModifiablex() ? "<Del>"    : ""  
-    noremap <expr><buffer><Insert>      <SID>IsModifiableX() ? "<Insert>" : ""  
-
-    inoremap <expr><buffer><Left>       <SID>IsModifiableX() ? "<Left>"   : ""  
-    noremap <expr><buffer><Left>        <SID>IsModifiableX() ? "<Left>"   : ""  
-    inoremap <expr><buffer><Right>      <SID>IsModifiablex() ? "<Right>"  : ""  
-    noremap <expr><buffer><Right>       <SID>IsModifiablex() ? "<Right>"  : ""  
-
-    inoremap <expr><buffer><Home>       "" 
-    inoremap <expr><buffer><End>        ""
-    inoremap <expr><buffer><Up>         ""
-    inoremap <expr><buffer><Down>       ""
-    inoremap <expr><buffer><S-Up>       ""
-    inoremap <expr><buffer><S-Down>     ""
-    inoremap <expr><buffer><S-Left>     ""
-    inoremap <expr><buffer><S-Right>    ""
-    inoremap <expr><buffer><C-Left>     ""
-    inoremap <expr><buffer><C-Right>    ""
-    inoremap <expr><buffer><PageUp>     ""
-    inoremap <expr><buffer><PageDown>   ""
-
-
-    noremap <buffer><silent>? :call <SID>toggle_help()<cr>
-    " inoremap <buffer> <silent> <c-i> <c-o>:call <SID>GotoInput()<cr>
-    " noremap <buffer> <silent> <c-i> :call <SID>GotoInput()<cr>
+    noremap <buffer><silent>? :call neodebug#ToggleHelp()<cr>
 
     inoremap <expr><buffer> <silent> <c-p>  "\<c-x><c-l>"
     inoremap <expr><buffer> <silent> <c-r>  "\<c-x><c-n>"
@@ -711,7 +543,7 @@ func s:InstallCommandsHotkeys()
     noremap <buffer><silent> <Tab> ""
     noremap <buffer><silent> <S-Tab> ""
 
-    noremap <buffer><silent> <ESC> :call CloseConsoleWindow()<CR>
+    noremap <buffer><silent> <ESC> :call neodebug#CloseConsoleWindow()<CR>
 
     inoremap <expr><buffer> <silent> <CR> pumvisible() ? "\<c-y><c-o>:call NeoDebug(getline('.'), 'i')<cr>" : "<c-o>:call NeoDebug(getline('.'), 'i')<cr>"
     imap <buffer> <silent> <2-LeftMouse> <cr>
@@ -785,7 +617,7 @@ endfunc
 let s:winbar_winids = []
 
 " Install the window toolbar in the current window.
-func s:InstallWinbar()
+func NeoDebugInstallWinbar()
     "nnoremenu WinBar.Step   :Step<CR>
     "nnoremenu WinBar.Next   :Over<CR>
     "nnoremenu WinBar.Finish :Finish<CR>
@@ -803,7 +635,7 @@ func s:InstallWinbar()
 endfunc
 
 " Delete installed debugger commands in the current window.
-func s:DeleteCommandsHotkeys()
+func NeoDebugDeleteCommandsHotkeys()
     delcommand Break
     delcommand Clear
     delcommand Step
@@ -814,7 +646,6 @@ func s:DeleteCommandsHotkeys()
     delcommand Stop
     delcommand Continue
     delcommand Evaluate
-    delcommand Gdb
     delcommand Program
     delcommand Winbar
 
@@ -871,25 +702,27 @@ func s:DeleteCommandsHotkeys()
 
     if s:ismswin
         " so _exrc
-        exec 'so '. g:neodbg_exrc . s:gdbd_port
-        call delete(g:neodbg_exrc . s:gdbd_port)
+        exec 'so '. s:neodbg_exrc . s:neodbg_port
+        call delete(s:neodbg_exrc . s:neodbg_port)
     else
         " so .exrc
-        exec 'so '. g:neodbg_exrc . s:gdbd_port
-        call delete(g:neodbg_exrc . s:gdbd_port)
+        exec 'so '. s:neodbg_exrc . s:neodbg_port
+        call delete(s:neodbg_exrc . s:neodbg_port)
     endif
     stopi
 endfunc
 
-" :Next, :Continue, etc - send a command to gdb
+" :Next, :Continue, etc - send a command to debugger
 func s:SendCommand(cmd)
     " echomsg "<GDB>cmd:[".a:cmd."]"
     let usercmd = a:cmd
     if usercmd != s:neodbg_cmd_historys[-1]
         call add(s:neodbg_cmd_historys, usercmd)
     else
-        call s:GotoConsoleWindow()
-        call setline(line('.'), getline('.').s:neodbg_cmd_historys[-1])
+        if s:neodbg_balloonexpr_flag == 0
+            call neodebug#GotoConsoleWindow()
+            call setline(line('.'), getline('.').s:neodbg_cmd_historys[-1])
+        endif
     endif
 
     if g:neodbg_debuginfo == 1
@@ -935,6 +768,7 @@ func s:BufferUnload()
         endif
     endfor
 endfunc
+
 
 func s:SetBreakpoint()
     " Setting a breakpoint may not work while the program is running.
@@ -1048,7 +882,7 @@ func s:HandleError(msg)
     " echoerr substitute(a:msg, '.*msg="\(.*\)"', '\1', '')
 endfunc
 
-" Handle stopping and running message from gdb.
+" Handle stopping and running message from debugger.
 " Will update the sign that shows the current position.
 func s:HandleCursor(msg)
     let wid = win_getid(winnr())
@@ -1165,7 +999,6 @@ function! s:NeoDebug_bpkey(file, line)
 endf
 
 function! s:CursorPos()
-    " ???? filename ????
     let file = expand("%:t")
     let line = line(".")
     return s:NeoDebug_bpkey(file, line)
@@ -1185,127 +1018,6 @@ function! s:RunToCursur()
     call NeoDebug("tb ".key)
     call NeoDebug("c")
 endf
-
-function s:GotoInput()
-    " exec "InsertLeave"
-    exec "normal G"
-    starti!
-endfunction
-
-function! s:IsModifiable()
-    let pos = getpos(".")  
-    let curline = pos[1]
-    if  curline == line("$") && strpart(s:neodbg_prompt, 0, 5) == strpart(getline("."), 0, 5) && col(".") >= strlen(s:neodbg_prompt)
-        return 1
-    else
-        return 0
-    endif
-endf
-
-function! s:IsModifiablex()
-    let pos = getpos(".")  
-    let curline = pos[1]
-    if  curline == line("$") && strpart(s:neodbg_prompt, 0, 5) == strpart(getline("."), 0, 5) && col(".") >= strlen(s:neodbg_prompt)+1
-                \ || (curline == line("$") && ' >' == strpart(getline("."), 0, 2) && col(".") >= strlen(' >')+1)
-        return 1
-    else
-        return 0
-    endif
-endf
-function! s:IsModifiableX()
-    let pos = getpos(".")  
-    let curline = pos[1]
-    if  (curline == line("$") && strpart(s:neodbg_prompt, 0, 5) == strpart(getline("."), 0, 5) && col(".") >= strlen(s:neodbg_prompt)+2)
-                \ || (curline == line("$") && ' >' == strpart(getline("."), 0, 2) && col(".") >= strlen(' >')+2)
-        return 1
-    else
-        return 0
-    endif
-endf
-fun! s:NeoDebugKeyi()
-    let pos = getpos(".")  
-    let curline = pos[1]
-    let curcol = pos[2]
-    if curline == line("$")
-        if curcol >  strlen(s:neodbg_prompt)
-            starti
-        else
-            starti!
-        endif
-    else
-        silent call s:GotoInput()
-    endif
-endf
-
-fun! s:NeoDebugKeyI()
-    let pos = getpos(".")  
-    let curline = pos[1]
-    let curcol = pos[2]
-    if curline == line("$")
-        let pos[2] = strlen(s:neodbg_prompt)+1
-        call setpos(".", pos)
-        starti
-    else
-        silent call s:GotoInput()
-    endif
-endf
-
-fun! s:NeoDebugKeya()
-    let linecon = getline("$")
-    let pos = getpos(".")  
-    let curline = pos[1]
-    let curcol = pos[2]
-    if curline == line("$")
-        if curcol >=  strlen(s:neodbg_prompt)
-            if linecon == s:neodbg_prompt
-                starti!
-            else
-                let pos[2] = pos[2]+1
-                call setpos(".", pos)
-                if pos[2] == col("$") 
-                    starti!
-                else
-                    starti
-                endif
-            endif
-        else
-            starti!
-        endif
-    else
-        silent call s:GotoInput()
-    endif
-endf
-
-fun! s:NeoDebugKeyA()
-    let pos = getpos(".")  
-    let curline = pos[1]
-    let curcol = pos[2]
-    if curline == line("$")
-        starti!
-    else
-        silent call s:GotoInput()
-    endif
-endf
-
-function s:NeoDebugKeyo()
-    let linecon = getline("$")
-    if linecon == s:neodbg_prompt
-        exec "normal G"
-        starti!
-    else
-        call append('$', s:neodbg_prompt)
-        $
-        starti!
-    endif
-endfunction
-
-function NeoDebugKeyS()
-    exec "normal G"
-    exec "normal dd"
-    call append('$', s:neodbg_prompt)
-    $
-    starti!
-endfunction
 
 command! -nargs=* -complete=file NeoDebug :call NeoDebug(<q-args>)
 command! -nargs=* -complete=file NeoDebugStop :call NeoDebugStop(<q-args>)
