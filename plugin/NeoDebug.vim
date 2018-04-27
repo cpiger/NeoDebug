@@ -17,7 +17,7 @@ if !exists('g:neodbg_ballonshow_with_print')
 endif
 
 if !exists('g:neodbg_debuginfo')
-    let g:neodbg_debuginfo = 0
+    let g:neodbg_debuginfo = 1
 endif
 
 let s:ismswin=has('win32')
@@ -31,7 +31,7 @@ let s:gdbd_port = 30777
 let s:neodbg_running = 0
 
 let s:completers = []
-let s:historys = []
+let s:neodbg_cmd_historys = ["first"]
 
 let s:pc_id = 12
 let s:break_id = 13
@@ -108,9 +108,12 @@ function! NeoDebug(cmd, ...)  " [mode]
     " echomsg "usercmd[".usercmd."]"
     if g:neodbg_debugger == 'gdb' && usercmd =~ '^\s*(gdb)' 
         let usercmd = substitute(usercmd, '^\s*(gdb)\s*', '', '')
+        if usercmd == ''
+            let usercmd = s:neodbg_cmd_historys[-1]
+        endif
     elseif g:neodbg_debugger == 'gdb' && usercmd =~ '^\s*>\s*' 
         let usercmd = substitute(usercmd, '^\s*>\s*', '', '')
-        " echomsg "usercmd2[".usercmd."]"
+        echomsg "usercmd2[".usercmd."]"
     endif
 
     call s:SendCommand(usercmd)
@@ -875,8 +878,20 @@ endfunc
 
 " :Next, :Continue, etc - send a command to gdb
 func s:SendCommand(cmd)
+    " echomsg "<GDB>cmd:[".a:cmd."]"
     let usercmd = a:cmd
-    call add(s:historys, usercmd)
+    if usercmd != s:neodbg_cmd_historys[-1]
+        call add(s:neodbg_cmd_historys, usercmd)
+    else
+        call s:GotoConsoleWindow()
+        call setline(line('.'), getline('.').s:neodbg_cmd_historys[-1])
+    endif
+
+    if g:neodbg_debuginfo == 1
+        silent echohl ModeMsg
+        echomsg "<GDB>:[".usercmd."]"
+        silent echohl None
+    endif
     call ch_sendraw(s:commjob, usercmd . "\n")
 endfunc
 
