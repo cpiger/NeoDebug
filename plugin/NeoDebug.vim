@@ -195,6 +195,7 @@ func s:NeoDebugStart(cmd)
     augroup NeoDebugAutoCMD
         au BufRead * call s:BufferRead()
         au BufUnload * call s:BufferUnload()
+        au VimLeavePre * call NeoDebugDeleteCommandsHotkeys()
     augroup END
 endfunc
 
@@ -743,7 +744,7 @@ func s:SendCommand(cmd)
     " echomsg "<GDB>cmd:[".a:cmd."]"
     let usercmd = a:cmd
     if usercmd != s:neodbg_cmd_historys[-1] 
-        if -1 == match(usercmd, '^complete')
+        if -1 == match(usercmd, '^complete') && -1 == match(usercmd, '^complete')
             call add(s:neodbg_cmd_historys, usercmd)
             if s:mode == 'n' && s:neodbg_init_flag == 0
                 call neodebug#GotoConsoleWindow()
@@ -751,7 +752,7 @@ func s:SendCommand(cmd)
             endif
         endif
     else
-        if s:neodbg_balloonexpr_flag == 0
+        if s:neodbg_balloonexpr_flag == 0 && -1 == match(usercmd, '^set pagination off')
             call neodebug#GotoConsoleWindow()
             call setline(line('$'), getline('$').s:neodbg_cmd_historys[-1])
         endif
