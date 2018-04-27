@@ -64,13 +64,14 @@ function s:update_help_text()
             \ '<S-F5> 	- stop debugging (kill)',
             \ '<F10> 	- next',
             \ '<F11> 	- step into',
-            \ '<S-F11> - step out (finish)',
+            \ '<S-F11>  - step out (finish)',
             \ '<C-F10>	- run to cursor (tb and c)',
             \ '<F9> 	- toggle breakpoint on current line',
             \ '<C-F9> 	- toggle enable/disable breakpoint on current line',
             \ '\ju or <C-S-F10> - set next statement (tb and jump)',
-            \ '<C-P>   - view variable under the cursor (.p)',
-            \ '<TAB>   - trigger complete ',
+            \ '<C-P>    - view variable under the cursor (.p)',
+            \ '<TAB>    - trigger complete ',
+            \ '<C-C>    - terminate debugger job',
             \ ]
     else
         let s:help_text = s:help_text_short
@@ -118,6 +119,10 @@ function! NeoDebug(cmd, ...)  " [mode]
 
     call s:SendCommand(usercmd)
 endf
+
+function! NeoDebugStop(cmd)
+    call job_stop(s:commjob)
+endfunction
 
 func s:NeoDebugStart(cmd)
     let s:startwin = win_getid(winnr())
@@ -741,7 +746,7 @@ func s:InstallCommandsHotkeys()
     nmap <silent> <F11>   :NeoDebug s<cr>
     nmap <silent> <S-F11> :NeoDebug finish<cr>
     nmap <silent> <c-q> :NeoDebug q<cr>
-    nmap <c-c> :call <SID>SendKey("\<c-c>")<cr>
+    nmap <silent> <c-c> :NeoDebugStop<cr>
 
     " map! <silent> <F5>    <c-o>:NeoDebug c<cr>i
     " map! <silent> <S-F5>  <c-o>:NeoDebug k<cr>i
@@ -1303,5 +1308,6 @@ function NeoDebugKeyS()
 endfunction
 
 command! -nargs=* -complete=file NeoDebug :call NeoDebug(<q-args>)
+command! -nargs=* -complete=file NeoDebugStop :call NeoDebugStop(<q-args>)
 
 " vim: set foldmethod=marker 
