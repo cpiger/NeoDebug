@@ -58,7 +58,6 @@ function! NeoDebug(cmd, ...)  " [mode]
         " save current setting and restore when neodebug quits via 'so .exrc'
         exec 'mk! ' . s:neodbg_exrc . s:neodbg_port
         "delete line set runtimepath for missing some functions after neodebug quit
-        " silent exec '!start /b sed -i "/set runtimepath/d" ' . s:neodbg_exrc . s:neodbg_port
         silent exec '!start /b sed -i "/set /d" ' . s:neodbg_exrc . s:neodbg_port
         let sed_tmp = fnamemodify(s:neodbg_exrc . s:neodbg_port, ":p:h")
         silent exec '!start /b rm -f '. sed_tmp . '/sed*'   
@@ -473,7 +472,6 @@ func NeoDebugInstallCommandsHotkeys()
     command Stop call s:SendCommand('-exec-interrupt')
     command Continue call s:SendCommand('-exec-continue')
     command -range -nargs=* Evaluate call s:Evaluate(<range>, <q-args>)
-    command Program call win_gotoid(s:ptywin)
     command Winbar call NeoDebugInstallWinbar()
 
     " TODO: can the K mapping be restored?
@@ -554,9 +552,6 @@ func NeoDebugInstallCommandsHotkeys()
     imap <buffer> <silent> <LeftMouse> <Nop>
     nmap <buffer> <silent> <kEnter> <cr>
 
-    " inoremap <buffer> <silent> <TAB> <C-X><C-L>
-    "nnoremap <buffer> <silent> : <C-W>p:
-
     nmap <silent> <F9>	         :call <SID>ToggleBreakpoint()<CR>
     map! <silent> <F9>	         <c-o>:call <SID>ToggleBreakpoint()<CR>
 
@@ -580,8 +575,6 @@ func NeoDebugInstallCommandsHotkeys()
     nmap <silent> <c-q> :NeoDebug q<cr>
     nmap <silent> <c-c> :NeoDebugStop<cr>
 
-    " map! <silent> <F5>    <c-o>:NeoDebug c<cr>i
-    " map! <silent> <S-F5>  <c-o>:NeoDebug k<cr>i
     map! <silent> <F5>    <c-o>:NeoDebug c<cr>
     map! <silent> <S-F5>  <c-o>:NeoDebug k<cr>
     map! <silent> <F10>   <c-o>:NeoDebug n<cr>
@@ -618,13 +611,6 @@ let s:winbar_winids = []
 
 " Install the window toolbar in the current window.
 func NeoDebugInstallWinbar()
-    "nnoremenu WinBar.Step   :Step<CR>
-    "nnoremenu WinBar.Next   :Over<CR>
-    "nnoremenu WinBar.Finish :Finish<CR>
-    "nnoremenu WinBar.Cont   :Continue<CR>
-    "nnoremenu WinBar.Stop   :Stop<CR>
-    "nnoremenu WinBar.Eval   :Evaluate<CR>
-
     nnoremenu WinBar.Step   :NeoDebug s<CR>
     nnoremenu WinBar.Next   :NeoDebug n<CR>
     nnoremenu WinBar.Finish :NeoDebug finish<CR>
@@ -646,7 +632,6 @@ func NeoDebugDeleteCommandsHotkeys()
     delcommand Stop
     delcommand Continue
     delcommand Evaluate
-    delcommand Program
     delcommand Winbar
 
     nunmap K
