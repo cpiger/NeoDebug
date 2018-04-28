@@ -3,7 +3,7 @@
 " Console
 " Breakpoints
 " Locals
-" Stack
+" StackFrame
 " Threads
 " Registers
 " Maintainer: scott (cpiger@qq.com)
@@ -306,4 +306,303 @@ function s:NeoDebugKeyS()
     $
     starti!
 endfunction
+
+
+
+
+function! neodebug#OpenLocal()
+
+    call neodebug#OpenLocalWindow()
+
+    setlocal buftype=nofile
+    setlocal complete=.
+    setlocal noswapfile
+    setlocal nowrap
+    setlocal nobuflisted
+    setlocal nonumber
+    setlocal winfixwidth
+    setlocal cursorline
+
+    setlocal foldcolumn=2
+    setlocal foldmarker={,}
+    setlocal foldmethod=marker
+
+endfunction
+" Local window
+let s:neodbg_local_opened = 0
+function! neodebug#OpenLocalWindow()
+    " call NeoDebugGotoStartWin()
+    if s:neodbg_local_opened == 1
+        return
+    endif
+    let s:neodbg_local_opened = 1
+    let bufnum = bufnr(g:neodbg_local_name)
+
+    if bufnum == -1
+        " Create a new buffer
+        let wcmd = g:neodbg_local_name
+    else
+        " Edit the existing buffer
+        let wcmd = '+buffer' . bufnum
+    endif
+
+    " Create the tag explorer window
+    " exe 'silent!  botright ' . g:neodbg_local_width. 'vsplit ' . wcmd
+    " exe 'silent!  ' . g:neodbg_local_height. 'split ' . wcmd
+    " exe 'silent!  botright ' . g:neodbg_breakpoints_width. 'vsplit ' . wcmd
+    exe 'silent!  botright ' . g:neodbg_local_width. 'vsplit ' . wcmd
+endfunction
+
+function neodebug#CloseLocalWindow()
+    let winnr = bufwinnr(g:neodbg_local_name)
+    if winnr != -1
+        call neodebug#GotoLocalWindow()
+        let s:neodbg_save_cursor = getpos(".")
+        close
+        let s:neodbg_local_opened = 0
+        return 1
+    endif
+    let s:neodbg_local_opened = 0
+    return 0
+endfunction
+
+function! neodebug#GotoLocalWindow()
+    if bufname("%") == g:neodbg_local_name
+        return
+    endif
+    let neodbg_winnr = bufwinnr(g:neodbg_local_name)
+    if neodbg_winnr == -1
+        " if multi-tab or the buffer is hidden
+        call neodebug#OpenLocalWindow()
+        let neodbg_winnr = bufwinnr(g:neodbg_local_name)
+    endif
+    exec neodbg_winnr . "wincmd w"
+endf
+
+function! neodebug#OpenStackFrames()
+
+    call neodebug#OpenStackFramesWindow()
+
+    setlocal buftype=nofile
+    setlocal complete=.
+    setlocal noswapfile
+    setlocal nowrap
+    setlocal nobuflisted
+    setlocal nonumber
+    setlocal winfixwidth
+    setlocal cursorline
+
+    setlocal foldcolumn=2
+    setlocal foldmarker={,}
+    setlocal foldmethod=marker
+
+endfunction
+
+" StackFrames window
+let s:neodbg_stackframes_opened = 0
+function! neodebug#OpenStackFramesWindow()
+    " call NeoDebugGotoStartWin()
+
+    if s:neodbg_local_opened == 0
+        call neodebug#OpenLocal()
+    endif
+
+    if s:neodbg_stackframes_opened == 1
+        return
+    endif
+    let s:neodbg_stackframes_opened = 1
+    call  neodebug#GotoLocalWindow()
+    let bufnum = bufnr(g:neodbg_stackframes_name)
+
+    if bufnum == -1
+        " Create a new buffer
+        let wcmd = g:neodbg_stackframes_name
+    else
+        " Edit the existing buffer
+        let wcmd = '+buffer' . bufnum
+    endif
+
+    " Create the tag explorer window
+    " exe 'silent!  botright ' . g:neodbg_stackframes_height. 'split ' . wcmd
+    exe 'silent!  ' . g:neodbg_stackframes_height. 'split ' . wcmd
+    exec "wincmd ="
+endfunction
+
+function neodebug#CloseStackFramesWindow()
+    let winnr = bufwinnr(g:neodbg_stackframes_name)
+    if winnr != -1
+        call neodebug#GotoStackFramesWindow()
+        let s:neodbg_save_cursor = getpos(".")
+        close
+        " exec "wincmd ="
+        let s:neodbg_stackframes_opened = 0
+        return 1
+    endif
+    " exec "wincmd ="
+    let s:neodbg_stackframes_opened = 0
+    return 0
+endfunction
+
+function! neodebug#GotoStackFramesWindow()
+    if bufname("%") == g:neodbg_stackframes_name
+        return
+    endif
+    let neodbg_winnr = bufwinnr(g:neodbg_stackframes_name)
+    if neodbg_winnr == -1
+        " if multi-tab or the buffer is hidden
+        call neodebug#OpenStackFramesWindow()
+        let neodbg_winnr = bufwinnr(g:neodbg_stackframes_name)
+    endif
+    exec neodbg_winnr . "wincmd w"
+endf
+
+
+function! neodebug#OpenThreads()
+
+    call neodebug#OpenThreadsWindow()
+
+    setlocal buftype=nofile
+    setlocal complete=.
+    setlocal noswapfile
+    setlocal nowrap
+    setlocal nobuflisted
+    setlocal nonumber
+    setlocal winfixwidth
+    setlocal cursorline
+
+    setlocal foldcolumn=2
+    setlocal foldmarker={,}
+    setlocal foldmethod=marker
+
+endfunction
+" Threads window
+let s:neodbg_threads_opened = 0
+function! neodebug#OpenThreadsWindow()
+    " call NeoDebugGotoStartWin()
+    if s:neodbg_local_opened == 0
+        call neodebug#OpenLocal()
+    endif
+    if s:neodbg_threads_opened == 1
+        return
+    endif
+    let s:neodbg_threads_opened = 1
+    call  neodebug#GotoLocalWindow()
+    let bufnum = bufnr(g:neodbg_threads_name)
+
+    if bufnum == -1
+        " Create a new buffer
+        let wcmd = g:neodbg_threads_name
+    else
+        " Edit the existing buffer
+        let wcmd = '+buffer' . bufnum
+    endif
+
+    " Create the tag explorer window
+    " exe 'silent!  botright ' . g:neodbg_threads_height. 'split ' . wcmd
+    exe 'silent!  ' . g:neodbg_threads_height. 'split ' . wcmd
+    exec "wincmd ="
+endfunction
+
+function neodebug#CloseThreadsWindow()
+    let winnr = bufwinnr(g:neodbg_threads_name)
+    if winnr != -1
+        call neodebug#GotoThreadsWindow()
+        let s:neodbg_save_cursor = getpos(".")
+        close
+        " exec "wincmd ="
+        let s:neodbg_threads_opened = 0
+        return 1
+    endif
+    " exec "wincmd ="
+    let s:neodbg_threads_opened = 0
+    return 0
+endfunction
+
+function! neodebug#GotoThreadsWindow()
+    if bufname("%") == g:neodbg_threads_name
+        return
+    endif
+    let neodbg_winnr = bufwinnr(g:neodbg_threads_name)
+    if neodbg_winnr == -1
+        " if multi-tab or the buffer is hidden
+        call neodebug#OpenThreadsWindow()
+        let neodbg_winnr = bufwinnr(g:neodbg_threads_name)
+    endif
+    exec neodbg_winnr . "wincmd w"
+endf
+
+function! neodebug#OpenBreakpoints()
+
+    call neodebug#OpenBreakpointsWindow()
+
+    setlocal buftype=nofile
+    setlocal complete=.
+    setlocal noswapfile
+    setlocal nowrap
+    setlocal nobuflisted
+    setlocal nonumber
+    setlocal winfixwidth
+    setlocal cursorline
+
+    setlocal foldcolumn=2
+    setlocal foldmarker={,}
+    setlocal foldmethod=marker
+
+endfunction
+" Breakpoints window
+let s:neodbg_breakpoints_opened = 0
+function! neodebug#OpenBreakpointsWindow()
+    " call NeoDebugGotoStartWin()
+    if s:neodbg_local_opened == 0
+        call neodebug#OpenLocal()
+    endif
+    call  neodebug#GotoLocalWindow()
+    if s:neodbg_breakpoints_opened == 1
+        return
+    endif
+    let s:neodbg_breakpoints_opened = 1
+    let bufnum = bufnr(g:neodbg_breakpoints_name)
+
+    if bufnum == -1
+        " Create a new buffer
+        let wcmd = g:neodbg_breakpoints_name
+    else
+        " Edit the existing buffer
+        let wcmd = '+buffer' . bufnum
+    endif
+
+    " Create the tag explorer window
+    " exe 'silent!  botright ' . g:neodbg_breakpoints_width. 'vsplit ' . wcmd
+    exe 'silent!  ' . g:neodbg_breakpoints_height. 'split ' . wcmd
+    exec "wincmd ="
+endfunction
+
+function neodebug#CloseBreakpointsWindow()
+    let winnr = bufwinnr(g:neodbg_breakpoints_name)
+    if winnr != -1
+        call neodebug#GotoBreakpointsWindow()
+        let s:neodbg_save_cursor = getpos(".")
+        close
+        " exec "wincmd ="
+        let s:neodbg_breakpoints_opened = 0
+        return 1
+    endif
+    " exec "wincmd ="
+    let s:neodbg_breakpoints_opened = 0
+    return 0
+endfunction
+
+function! neodebug#GotoBreakpointsWindow()
+    if bufname("%") == g:neodbg_breakpoints_name
+        return
+    endif
+    let neodbg_winnr = bufwinnr(g:neodbg_breakpoints_name)
+    if neodbg_winnr == -1
+        " if multi-tab or the buffer is hidden
+        call neodebug#OpenBreakpointsWindow()
+        let neodbg_winnr = bufwinnr(g:neodbg_breakpoints_name)
+    endif
+    exec neodbg_winnr . "wincmd w"
+endf
+
 " vim: set foldmethod=marker 

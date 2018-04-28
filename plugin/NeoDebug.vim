@@ -28,6 +28,23 @@ let g:neodbg_console_name = "__DebugConsole__"
 let g:neodbg_console_height = 15
 let g:neodbg_prompt = '(gdb) '
 
+let g:neodbg_breakpoints_name = "__Breakpoints__"
+let g:neodbg_breakpoints_width = 35
+let g:neodbg_breakpoints_height = 10
+
+let g:neodbg_local_name = "__Local__"
+let g:neodbg_local_width = 35
+let g:neodbg_local_height = 10
+
+let g:neodbg_stackframes_name = "__Stack Frames__"
+let g:neodbg_stackframes_width = 35
+let g:neodbg_stackframes_height = 10
+
+let g:neodbg_threads_name = "__Threads__"
+let g:neodbg_threads_width = 35
+let g:neodbg_threads_height = 10
+
+
 let s:neodbg_running = 0
 let s:neodbg_exrc = $HOME.'/neodbg_exrc'
 let s:neodbg_port = 30777 
@@ -53,6 +70,24 @@ function! NeoDebug(cmd, ...)  " [mode]
 
     if s:neodbg_running == 0
         let s:neodbg_port= 30000 + reltime()[1] % 10000
+
+        call neodebug#OpenLocal()
+        let s:neodbg_local_win = win_getid(winnr())
+
+        call neodebug#OpenStackFrames()
+        let s:neodbg_stackframes_win = win_getid(winnr())
+
+        call neodebug#OpenThreads()
+        let s:neodbg_threads_win = win_getid(winnr())
+
+        call neodebug#OpenBreakpoints()
+        let s:neodbg_breakpoints_win = win_getid(winnr())
+
+
+        call neodebug#CloseBreakpointsWindow()
+        call neodebug#CloseThreadsWindow()
+        call neodebug#CloseStackFramesWindow()
+        call neodebug#CloseLocalWindow()
         call s:NeoDebugStart(usercmd)
 
         " save current setting and restore when neodebug quits via 'so .exrc'
@@ -69,6 +104,11 @@ function! NeoDebug(cmd, ...)  " [mode]
         let s:neodbg_console_win = win_getid(winnr())
 
         let s:neodbg_running = 1
+        
+
+        " call win_gotoid(s:neodbg_local_win)
+        " exec "wincmd ="
+        " call neodebug#GotoConsoleWindow()
 
         return
     endif
@@ -1102,5 +1142,22 @@ endfunction
 
 command! -nargs=* -complete=file NeoDebug :call NeoDebug(<q-args>)
 command! -nargs=* -complete=file NeoDebugStop :call NeoDebugStop(<q-args>)
+command!  OpenLocal :call neodebug#OpenLocalWindow()
+command!  OpenStack :call neodebug#OpenStackFramesWindow()
+command!  OpenThread :call neodebug#OpenThreadsWindow()
+command!  OpenBreak :call neodebug#OpenBreakpointsWindow()
+command!  CloseLocal :call neodebug#CloseLocalWindow()
+command!  CloseStack :call neodebug#CloseStackFramesWindow()
+command!  CloseThread :call neodebug#CloseThreadsWindow()
+command!  CloseBreak :call neodebug#CloseBreakpointsWindow()
+
+command!  OL :call neodebug#OpenLocalWindow()
+command!  OS :call neodebug#OpenStackFramesWindow()
+command!  OT :call neodebug#OpenThreadsWindow()
+command!  OB :call neodebug#OpenBreakpointsWindow()
+command!  CL :call neodebug#CloseLocalWindow()
+command!  CS :call neodebug#CloseStackFramesWindow()
+command!  CT :call neodebug#CloseThreadsWindow()
+command!  CB :call neodebug#CloseBreakpointsWindow()
 
 " vim: set foldmethod=marker 
