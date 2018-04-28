@@ -44,7 +44,7 @@ function neodebug#ToggleHelp()
 
     let s:help_open = !s:help_open
     silent exec '1,' . len(s:help_text) . 'd _'
-    call s:update_help_text()
+    call s:UpdateHelpText()
     silent call append ( 0, s:help_text )
     silent keepjumps normal! gg
 endfunction
@@ -81,7 +81,6 @@ function! neodebug#OpenConsole()
     setl completefunc=NeoDebugComplete
 
 endfunction
-
 " Get ready for communication
 function! neodebug#OpenConsoleWindow()
     let bufnum = bufnr(g:neodbg_console_name)
@@ -307,5 +306,4 @@ function s:NeoDebugKeyS()
     $
     starti!
 endfunction
-
 " vim: set foldmethod=marker 

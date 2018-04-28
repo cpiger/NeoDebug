@@ -66,6 +66,7 @@ function! NeoDebug(cmd, ...)  " [mode]
         set nocursorcolumn
 
         call neodebug#OpenConsole()
+        let s:neodbg_console_win = win_getid(winnr())
 
         let s:neodbg_running = 1
 
@@ -162,7 +163,6 @@ func s:NeoDebugStart(cmd)
         let s:chan = job_getchannel(s:commjob)  
         let commpty = job_info((s:commjob))['tty_out']
     endif
-    let s:neodebug_console_win = win_getid(winnr())
 
     " Interpret commands while the target is running.  This should usualy only be
     " exec-interrupt, since many commands don't work properly while the target is
@@ -1095,6 +1095,10 @@ function! s:RunToCursur()
     call NeoDebug("tb ".key)
     call NeoDebug("c")
 endf
+
+function! NeoDebugGotoStartWin()
+    call win_gotoid(s:startwin)
+endfunction
 
 command! -nargs=* -complete=file NeoDebug :call NeoDebug(<q-args>)
 command! -nargs=* -complete=file NeoDebugStop :call NeoDebugStop(<q-args>)
