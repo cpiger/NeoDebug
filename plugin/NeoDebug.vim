@@ -29,19 +29,19 @@ let g:neodbg_console_height = 15
 let g:neodbg_prompt = '(gdb) '
 
 let g:neodbg_breakpoints_name = "__Breakpoints__"
-let g:neodbg_breakpoints_width = 35
+let g:neodbg_breakpoints_width = 50
 let g:neodbg_breakpoints_height = 10
 
 let g:neodbg_local_name = "__Local__"
-let g:neodbg_local_width = 35
+let g:neodbg_local_width = 50
 let g:neodbg_local_height = 10
 
 let g:neodbg_stackframes_name = "__Stack Frames__"
-let g:neodbg_stackframes_width = 35
+let g:neodbg_stackframes_width = 50
 let g:neodbg_stackframes_height = 10
 
 let g:neodbg_threads_name = "__Threads__"
-let g:neodbg_threads_width = 35
+let g:neodbg_threads_width = 50
 let g:neodbg_threads_height = 10
 
 
@@ -312,9 +312,7 @@ func s:HandleOutput(chan, msg)
 
     if debugger_line != '' && s:completer_skip_flag == 0
         " Handle 
-        if debugger_line =~ '^\(\*stopped\|\*running\|=thread-selected\)'
-            call s:HandleCursor(debugger_line)
-        elseif debugger_line =~ '^\^done,new-thread-id='
+        if debugger_line =~ '^\(\*stopped\|\^done,new-thread-id=\|\*running\|=thread-selected\)'
             call s:HandleCursor(debugger_line)
         elseif debugger_line =~ '^\^done,bkpt=' || debugger_line =~ '=breakpoint-created,'
             call s:HandleNewBreakpoint(debugger_line)
@@ -329,11 +327,33 @@ func s:HandleOutput(chan, msg)
         endif
 
         " echomsg "debugger_line:".debugger_line
-        call neodebug#GotoConsoleWindow()
+        if s:mode == 'u' &&  debugger_line != g:neodbg_prompt
+            call neodebug#GotoBreakpointsWindow()
+            " silent exec '0,' . line("$") . 'd _'
+            if debugger_line =~ '^\~"' 
+                let s:appendline .= strpart(debugger_line, 2, strlen(debugger_line)-3)
+                if debugger_line =~ '\\n"\_$'
+                    " echomsg "s:appendfile:".s:appendline
+                    let s:appendline = substitute(s:appendline, '\\n\|\\t\|\\032\\032', '', 'g')
+                    let s:appendline = substitute(s:appendline, '\\"', '"', 'g')
+                    call append(line("$"), s:appendline)
+                    let s:appendline = ''
+                endif
+            endif
+            call neodebug#GotoConsoleWindow()
+            return
+        else
+            call neodebug#GotoConsoleWindow()
+        endif
         if s:neodbg_sendcmd_flag == 1
             call setline(line('$'), getline('$').s:neodbg_cmd_historys[-1])
             let s:neodbg_sendcmd_flag = 0
         endif
+
+        " if s:mode == 'u'
+            " return
+        " endif
+
         if debugger_line =~ '^\~" >"' 
             call append(line("$"), strpart(debugger_line, 2, strlen(debugger_line)-3))
             " elseif debugger_line =~ '^\~"\S\+' 
@@ -353,6 +373,7 @@ func s:HandleOutput(chan, msg)
                 call append(line("$"), s:append_err)
             endif
         elseif debugger_line == g:neodbg_prompt
+            call neodebug#GotoConsoleWindow()
             if getline("$") != g:neodbg_prompt
                 call append(line("$"), debugger_line)
             endif
@@ -790,7 +811,8 @@ function! NeoDebugSendCommand(cmd, ...)  " [mode]
     " echomsg "<GDB>cmd:[".a:cmd."]"
     let usercmd = a:cmd
     let mode = a:0>0 ? a:1 : ''
-    if usercmd != s:neodbg_cmd_historys[-1] && g:neodbg_updatebreak_flag == 0
+    let s:mode = mode
+    if usercmd != s:neodbg_cmd_historys[-1]
         if -1 == match(usercmd, '^complete') && -1 == match(usercmd, '^complete')
             call add(s:neodbg_cmd_historys, usercmd)
             if mode == 'n' && s:neodbg_init_flag == 0
@@ -972,6 +994,10 @@ func s:HandleCursor(msg)
         let s:stopped = 0
     endif
 
+    if a:msg =~ '\(\*stopped,reason="breakpoint-hit"\)'
+        call  neodebug#UpdateBreakpointsWindow()
+    endif
+
     if win_gotoid(s:startwin)
         let fname = substitute(a:msg, '.*fullname="\([^"]*\)".*', '\1', '')
         " let fname = fnamemodify(fnamemodify(fname, ":t"), ":p")
@@ -1067,6 +1093,8 @@ func s:HandleNewBreakpoint(msg)
         call s:PlaceSign(nr, entry)
     endif
     redraw
+
+    call neodebug#UpdateBreakpointsWindow()
 endfunc
 
 " Handle deleting a breakpoint
@@ -1084,6 +1112,7 @@ func s:HandleBreakpointDelete(msg)
         endif
         unlet s:breakpoints[nr]
     endif
+    call neodebug#UpdateBreakpointsWindow()
 endfunc
 
 " TODO 

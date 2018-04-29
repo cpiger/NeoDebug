@@ -633,21 +633,21 @@ function! neodebug#GotoBreakpointsWindow()
     endif
     exec neodbg_winnr . "wincmd w"
 endf
-let g:neodbg_updatebreak_flag = 0
 function! neodebug#UpdateBreakpointsWindow()
-    let g:neodbg_updatebreak_flag = 1
-    call NeoDebugSendCommand("info breakpoints")
-    let g:neodbg_updatebreak_flag = 0
-
-    let output = ch_readraw(g:neodbg_chan)
-    let alloutput = ''
-    while output != g:neodbg_prompt
-        let alloutput .= output
-        let output = ch_readraw(g:neodbg_chan)
-    endw
 
     call neodebug#GotoBreakpointsWindow()
-    call append(line("$"), alloutput)
+    silent exec '0,' . line("$") . 'd _'
+    call NeoDebugSendCommand("info breakpoints", 'u')
+
+    " let output = ch_readraw(g:neodbg_chan)
+    " let alloutput = ''
+    " while output != g:neodbg_prompt
+        " let alloutput .= output
+        " let output = ch_readraw(g:neodbg_chan)
+    " endw
+
+    " call neodebug#GotoBreakpointsWindow()
+    " call append(line("$"), alloutput)
 
 endf
 
