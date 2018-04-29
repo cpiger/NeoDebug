@@ -310,9 +310,9 @@ endfunction
 
 
 
-function! neodebug#OpenLocal()
+function! neodebug#OpenLocals()
 
-    call neodebug#OpenLocalWindow()
+    call neodebug#OpenLocalsWindow()
 
     setlocal buftype=nofile
     setlocal complete=.
@@ -329,55 +329,56 @@ function! neodebug#OpenLocal()
 
 endfunction
 " Local window
-let s:neodbg_local_opened = 0
-function! neodebug#OpenLocalWindow()
+let s:neodbg_locals_opened = 0
+function! neodebug#OpenLocalsWindow()
     " call NeoDebugGotoStartWin()
-    if s:neodbg_local_opened == 1
+    if s:neodbg_locals_opened == 1
         return
     endif
-    let s:neodbg_local_opened = 1
-    let bufnum = bufnr(g:neodbg_local_name)
+    let s:neodbg_locals_opened = 1
+    let bufnum = bufnr(g:neodbg_locals_name)
 
     if bufnum == -1
         " Create a new buffer
-        let wcmd = g:neodbg_local_name
+        let wcmd = g:neodbg_locals_name
     else
         " Edit the existing buffer
         let wcmd = '+buffer' . bufnum
     endif
 
     " Create the tag explorer window
-    " exe 'silent!  botright ' . g:neodbg_local_width. 'vsplit ' . wcmd
+    " exe 'silent!  botright ' . g:neodbg_locals_width. 'vsplit ' . wcmd
     " exe 'silent!  ' . g:neodbg_local_height. 'split ' . wcmd
     " exe 'silent!  botright ' . g:neodbg_breakpoints_width. 'vsplit ' . wcmd
-    exe 'silent!  botright ' . g:neodbg_local_width. 'vsplit ' . wcmd
-    nnoremenu WinBar.Local   :echo<CR>
+    exe 'silent!  botright ' . g:neodbg_locals_width. 'vsplit ' . wcmd
+    nnoremenu WinBar.Locals   :echo<CR>
 endfunction
 
-function neodebug#CloseLocalWindow()
-    let winnr = bufwinnr(g:neodbg_local_name)
+function neodebug#CloseLocalsWindow()
+    let winnr = bufwinnr(g:neodbg_locals_name)
     if winnr != -1
-        call neodebug#GotoLocalWindow()
+        call neodebug#GotoLocalsWindow()
         let s:neodbg_save_cursor = getpos(".")
         close
-        let s:neodbg_local_opened = 0
+        let s:neodbg_locals_opened = 0
         return 1
     endif
-    let s:neodbg_local_opened = 0
+    let s:neodbg_locals_opened = 0
     return 0
 endfunction
 
-function! neodebug#GotoLocalWindow()
-    if bufname("%") == g:neodbg_local_name
+function! neodebug#GotoLocalsWindow()
+    if bufname("%") == g:neodbg_locals_name
         return
     endif
-    let neodbg_winnr = bufwinnr(g:neodbg_local_name)
+    let neodbg_winnr = bufwinnr(g:neodbg_locals_name)
     if neodbg_winnr == -1
         " if multi-tab or the buffer is hidden
-        call neodebug#OpenLocalWindow()
-        let neodbg_winnr = bufwinnr(g:neodbg_local_name)
+        call neodebug#OpenLocalsWindow()
+        let neodbg_winnr = bufwinnr(g:neodbg_locals_name)
     endif
     exec neodbg_winnr . "wincmd w"
+    " call win_gotoid(g:neodbg_locals_win)
 endf
 
 function! neodebug#OpenStackFrames()
@@ -404,15 +405,15 @@ let s:neodbg_stackframes_opened = 0
 function! neodebug#OpenStackFramesWindow()
     " call NeoDebugGotoStartWin()
 
-    if s:neodbg_local_opened == 0
-        call neodebug#OpenLocal()
+    if s:neodbg_locals_opened == 0
+        call neodebug#OpenLocals()
     endif
 
     if s:neodbg_stackframes_opened == 1
         return
     endif
     let s:neodbg_stackframes_opened = 1
-    call  neodebug#GotoLocalWindow()
+    call  neodebug#GotoLocalsWindow()
     let bufnum = bufnr(g:neodbg_stackframes_name)
 
     if bufnum == -1
@@ -481,14 +482,14 @@ endfunction
 let s:neodbg_threads_opened = 0
 function! neodebug#OpenThreadsWindow()
     " call NeoDebugGotoStartWin()
-    if s:neodbg_local_opened == 0
-        call neodebug#OpenLocal()
+    if s:neodbg_locals_opened == 0
+        call neodebug#OpenLocals()
     endif
     if s:neodbg_threads_opened == 1
         return
     endif
     let s:neodbg_threads_opened = 1
-    call  neodebug#GotoLocalWindow()
+    call  neodebug#GotoLocalsWindow()
     let bufnum = bufnr(g:neodbg_threads_name)
 
     if bufnum == -1
@@ -580,10 +581,10 @@ endfunction
 let s:neodbg_breakpoints_opened = 0
 function! neodebug#OpenBreakpointsWindow()
     " call NeoDebugGotoStartWin()
-    if s:neodbg_local_opened == 0
-        call neodebug#OpenLocal()
+    if s:neodbg_locals_opened == 0
+        call neodebug#OpenLocals()
     endif
-    call  neodebug#GotoLocalWindow()
+    call  neodebug#GotoLocalsWindow()
     if s:neodbg_breakpoints_opened == 1
         return
     endif
@@ -632,22 +633,19 @@ function! neodebug#GotoBreakpointsWindow()
         let neodbg_winnr = bufwinnr(g:neodbg_breakpoints_name)
     endif
     exec neodbg_winnr . "wincmd w"
+    " call win_gotoid(g:neodbg_breakpoints_win)
 endf
 function! neodebug#UpdateBreakpointsWindow()
-
     call neodebug#GotoBreakpointsWindow()
     silent exec '0,' . line("$") . 'd _'
-    call NeoDebugSendCommand("info breakpoints", 'u')
+    call NeoDebugSendCommand("info breakpoints", 'b')
 
-    " let output = ch_readraw(g:neodbg_chan)
-    " let alloutput = ''
-    " while output != g:neodbg_prompt
-        " let alloutput .= output
-        " let output = ch_readraw(g:neodbg_chan)
-    " endw
+endf
 
-    " call neodebug#GotoBreakpointsWindow()
-    " call append(line("$"), alloutput)
+function! neodebug#UpdateLocalsWindow()
+    call neodebug#GotoLocalsWindow()
+    silent exec '0,' . line("$") . 'd _'
+    call NeoDebugSendCommand("info locals", 'l')
 
 endf
 

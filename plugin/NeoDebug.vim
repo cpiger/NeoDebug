@@ -32,9 +32,9 @@ let g:neodbg_breakpoints_name = "__Breakpoints__"
 let g:neodbg_breakpoints_width = 50
 let g:neodbg_breakpoints_height = 10
 
-let g:neodbg_local_name = "__Local__"
-let g:neodbg_local_width = 50
-let g:neodbg_local_height = 10
+let g:neodbg_locals_name = "__Locals__"
+let g:neodbg_locals_width = 50
+let g:neodbg_locals_height = 10
 
 let g:neodbg_stackframes_name = "__Stack Frames__"
 let g:neodbg_stackframes_width = 50
@@ -43,6 +43,14 @@ let g:neodbg_stackframes_height = 10
 let g:neodbg_threads_name = "__Threads__"
 let g:neodbg_threads_width = 50
 let g:neodbg_threads_height = 10
+
+let g:neodbg_locals_win = 0
+
+let g:neodbg_stackframes_win = 0
+
+let g:neodbg_threads_win = 0
+
+let g:neodbg_breakpoints_win = 0
 
 
 let g:neodbg_chan = 0
@@ -73,23 +81,23 @@ function! NeoDebug(cmd, ...)  " [mode]
     if s:neodbg_running == 0
         let s:neodbg_port= 30000 + reltime()[1] % 10000
 
-        call neodebug#OpenLocal()
-        let s:neodbg_local_win = win_getid(winnr())
+        call neodebug#OpenLocals()
+        let g:neodbg_locals_win = win_getid(winnr())
 
         call neodebug#OpenStackFrames()
-        let s:neodbg_stackframes_win = win_getid(winnr())
+        let g:neodbg_stackframes_win = win_getid(winnr())
 
         call neodebug#OpenThreads()
-        let s:neodbg_threads_win = win_getid(winnr())
+        let g:neodbg_threads_win = win_getid(winnr())
 
         call neodebug#OpenBreakpoints()
-        let s:neodbg_breakpoints_win = win_getid(winnr())
+        let g:neodbg_breakpoints_win = win_getid(winnr())
 
 
         call neodebug#CloseBreakpointsWindow()
         call neodebug#CloseThreadsWindow()
         call neodebug#CloseStackFramesWindow()
-        call neodebug#CloseLocalWindow()
+        call neodebug#CloseLocalsWindow()
         call s:NeoDebugStart(usercmd)
 
         " save current setting and restore when neodebug quits via 'so .exrc'
@@ -108,7 +116,7 @@ function! NeoDebug(cmd, ...)  " [mode]
         let s:neodbg_running = 1
         
 
-        " call win_gotoid(s:neodbg_local_win)
+        " call win_gotoid(s:neodbg_locals_win)
         " exec "wincmd ="
         " call neodebug#GotoConsoleWindow()
 
@@ -253,8 +261,20 @@ func s:NeoDebugEnd(job, status)
     " If neodebug console window is open then close it.
     call neodebug#GotoConsoleWindow()
     quit
+    call neodebug#GotoBreakpointsWindow()
+    quit
+    call neodebug#GotoThreadsWindow()
+    quit
+    call neodebug#GotoStackFramesWindow()
+    quit
+    call neodebug#GotoLocalsWindow()
+    quit
 
     exe 'bwipe! ' . bufnr(g:neodbg_console_name)
+    exe 'bwipe! ' . bufnr(g:neodbg_locals_name)
+    exe 'bwipe! ' . bufnr(g:neodbg_stackframes_name)
+    exe 'bwipe! ' . bufnr(g:neodbg_threads_name)
+    exe 'bwipe! ' . bufnr(g:neodbg_breakpoints_name)
 
     let curwinid = win_getid(winnr())
 
@@ -327,16 +347,24 @@ func s:HandleOutput(chan, msg)
         endif
 
         " echomsg "debugger_line:".debugger_line
-        if s:mode == 'u' &&  debugger_line != g:neodbg_prompt
-            call neodebug#GotoBreakpointsWindow()
-            " silent exec '0,' . line("$") . 'd _'
+        if (s:mode == 'b' || s:mode == 'l') &&  debugger_line != g:neodbg_prompt
+            " if s:mode == 'b'
+                " call neodebug#GotoBreakpointsWindow()
+            " elseif s:mode == 'l'
+                " call neodebug#GotoLocalsWindow()
+            " endif
             if debugger_line =~ '^\~"' 
+                if (debugger_line =~ 'breakpoint' || debugger_line =~ 'Disp Enb Address' )
+                    call neodebug#GotoBreakpointsWindow()
+                else
+                    call neodebug#GotoLocalsWindow()
+                endif
                 let s:appendline .= strpart(debugger_line, 2, strlen(debugger_line)-3)
                 if debugger_line =~ '\\n"\_$'
                     " echomsg "s:appendfile:".s:appendline
                     let s:appendline = substitute(s:appendline, '\\n\|\\t\|\\032\\032', '', 'g')
                     let s:appendline = substitute(s:appendline, '\\"', '"', 'g')
-                    call append(line("$"), s:appendline)
+                    call append(line("$")-1, s:appendline)
                     let s:appendline = ''
                 endif
             endif
@@ -349,10 +377,6 @@ func s:HandleOutput(chan, msg)
             call setline(line('$'), getline('$').s:neodbg_cmd_historys[-1])
             let s:neodbg_sendcmd_flag = 0
         endif
-
-        " if s:mode == 'u'
-            " return
-        " endif
 
         if debugger_line =~ '^\~" >"' 
             call append(line("$"), strpart(debugger_line, 2, strlen(debugger_line)-3))
@@ -993,9 +1017,12 @@ func s:HandleCursor(msg)
     elseif a:msg =~ '\*running'
         let s:stopped = 0
     endif
-
     if a:msg =~ '\(\*stopped,reason="breakpoint-hit"\)'
         call  neodebug#UpdateBreakpointsWindow()
+    endif
+
+    if a:msg =~ '\(\*stopped\)'
+        call neodebug#UpdateLocalsWindow()
     endif
 
     if win_gotoid(s:startwin)
@@ -1179,20 +1206,20 @@ endfunction
 
 command! -nargs=* -complete=file NeoDebug :call NeoDebug(<q-args>)
 command! -nargs=* -complete=file NeoDebugStop :call NeoDebugStop(<q-args>)
-command!  OpenLocal :call neodebug#OpenLocalWindow()
+command!  OpenLocal :call neodebug#OpenLocalsWindow()
 command!  OpenStack :call neodebug#OpenStackFramesWindow()
 command!  OpenThread :call neodebug#OpenThreadsWindow()
 command!  OpenBreak :call neodebug#OpenBreakpointsWindow()
-command!  CloseLocal :call neodebug#CloseLocalWindow()
+command!  CloseLocal :call neodebug#CloseLocalsWindow()
 command!  CloseStack :call neodebug#CloseStackFramesWindow()
 command!  CloseThread :call neodebug#CloseThreadsWindow()
 command!  CloseBreak :call neodebug#CloseBreakpointsWindow()
 
-command!  OL :call neodebug#OpenLocalWindow()
+command!  OL :call neodebug#OpenLocalsWindow()
 command!  OS :call neodebug#OpenStackFramesWindow()
 command!  OT :call neodebug#OpenThreadsWindow()
 command!  OB :call neodebug#OpenBreakpointsWindow()
-command!  CL :call neodebug#CloseLocalWindow()
+command!  CL :call neodebug#CloseLocalsWindow()
 command!  CS :call neodebug#CloseStackFramesWindow()
 command!  CT :call neodebug#CloseThreadsWindow()
 command!  CB :call neodebug#CloseBreakpointsWindow()
