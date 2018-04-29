@@ -36,6 +36,11 @@ Screenshot:
 ![threas](https://github.com/cpiger/NeoDebug/blob/master/NeoDebugInfoThreadsHit.png)
 
 
+5. info locals, breakpoints, threads, bt
+
+![info](https://github.com/cpiger/NeoDebug/blob/master/NeoDebugInfobl.png)
+
+
 ## Installation
 
 1. You need install sed (and of course gdb).
