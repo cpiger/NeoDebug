@@ -69,7 +69,12 @@ My dev environment:
 In vim or gvim, run :NeoDebug command, e.g. 
 See Screenshot.
 
-	:NeoDebug
+	:NeoDebug         "start
+
+    :OpenLocal        "open  [info locals] window
+    :CloseLocal       "close [info locals] window
+    :OpenBreak        "open  [info breakpoints] window
+    :CloseBreak       "close [info breakpoints] window
 
 
 The following shortcuts is applied that is similar to MSVC: 
@@ -85,6 +90,7 @@ The following shortcuts is applied that is similar to MSVC:
 	\ju or <C-S-F10> - set next statement (tb and jump)
 	<C-P> 	- view variable under the cursor (.p)
     <TAB>   - trigger complete 
+
 
 ## Thanks
 skyshore2001

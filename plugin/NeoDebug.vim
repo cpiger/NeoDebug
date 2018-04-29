@@ -1215,13 +1215,4 @@ command!  CloseStack :call neodebug#CloseStackFramesWindow()
 command!  CloseThread :call neodebug#CloseThreadsWindow()
 command!  CloseBreak :call neodebug#CloseBreakpointsWindow()
 
-command!  OL :call neodebug#OpenLocalsWindow()
-command!  OS :call neodebug#OpenStackFramesWindow()
-command!  OT :call neodebug#OpenThreadsWindow()
-command!  OB :call neodebug#OpenBreakpointsWindow()
-command!  CL :call neodebug#CloseLocalsWindow()
-command!  CS :call neodebug#CloseStackFramesWindow()
-command!  CT :call neodebug#CloseThreadsWindow()
-command!  CB :call neodebug#CloseBreakpointsWindow()
-
 " vim: set foldmethod=marker 
