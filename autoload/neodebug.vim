@@ -351,6 +351,7 @@ function! neodebug#OpenLocalWindow()
     " exe 'silent!  ' . g:neodbg_local_height. 'split ' . wcmd
     " exe 'silent!  botright ' . g:neodbg_breakpoints_width. 'vsplit ' . wcmd
     exe 'silent!  botright ' . g:neodbg_local_width. 'vsplit ' . wcmd
+    nnoremenu WinBar.Local   :echo<CR>
 endfunction
 
 function neodebug#CloseLocalWindow()
@@ -426,6 +427,7 @@ function! neodebug#OpenStackFramesWindow()
     " exe 'silent!  botright ' . g:neodbg_stackframes_height. 'split ' . wcmd
     exe 'silent!  ' . g:neodbg_stackframes_height. 'split ' . wcmd
     exec "wincmd ="
+    nnoremenu WinBar.StackFrames   :echo<CR>
 endfunction
 
 function neodebug#CloseStackFramesWindow()
@@ -501,6 +503,7 @@ function! neodebug#OpenThreadsWindow()
     " exe 'silent!  botright ' . g:neodbg_threads_height. 'split ' . wcmd
     exe 'silent!  ' . g:neodbg_threads_height. 'split ' . wcmd
     exec "wincmd ="
+    nnoremenu WinBar.Threads   :echo<CR>
 endfunction
 
 function neodebug#CloseThreadsWindow()
@@ -548,6 +551,30 @@ function! neodebug#OpenBreakpoints()
     setlocal foldmarker={,}
     setlocal foldmethod=marker
 
+    " highlight NeoDebugGoto guifg=Blue
+    hi def link NeoDebugKey Statement
+    hi def link NeoDebugHiLn Statement
+    hi def link NeoDebugGoto Underlined
+    hi def link NeoDebugPtr Underlined
+    hi def link NeoDebugFrame LineNr
+    hi def link NeoDebugCmd Macro
+    " syntax
+    syn keyword NeoDebugKey Function Breakpoint Catchpoint 
+    syn match NeoDebugFrame /\v^#\d+ .*/ contains=NeoDebugGoto
+    syn match NeoDebugGoto /\v<at [^()]+:\d+|file .+, line \d+/
+    syn match NeoDebugCmd /^(gdb).*/
+    syn match NeoDebugPtr /\v(^|\s+)\zs\$?\w+ \=.{-0,} 0x\w+/
+    " highlight the whole line for 
+    " returns for info threads | info break | finish | watchpoint
+    syn match NeoDebugHiLn /\v^\s*(Id\s+Target Id|Num\s+Type|Value returned is|(Old|New) value =|Hardware watchpoint).*$/
+
+    " syntax for perldb
+    syn match NeoDebugCmd /^\s*DB<.*/
+    "	syn match NeoDebugFrame /\v^#\d+ .*/ contains=NeoDebugGoto
+    syn match NeoDebugGoto /\v from file ['`].+' line \d+/
+    syn match NeoDebugGoto /\v at ([^ ]+) line (\d+)/
+    syn match NeoDebugGoto /\v at \(eval \d+\)..[^:]+:\d+/
+
 endfunction
 " Breakpoints window
 let s:neodbg_breakpoints_opened = 0
@@ -575,6 +602,8 @@ function! neodebug#OpenBreakpointsWindow()
     " exe 'silent!  botright ' . g:neodbg_breakpoints_width. 'vsplit ' . wcmd
     exe 'silent!  ' . g:neodbg_breakpoints_height. 'split ' . wcmd
     exec "wincmd ="
+    " nnoremenu WinBar.Breakpoints   :NeoDebug info breakpoints<CR>
+    nnoremenu WinBar.Breakpoints   :echo<CR>
 endfunction
 
 function neodebug#CloseBreakpointsWindow()
@@ -603,6 +632,23 @@ function! neodebug#GotoBreakpointsWindow()
         let neodbg_winnr = bufwinnr(g:neodbg_breakpoints_name)
     endif
     exec neodbg_winnr . "wincmd w"
+endf
+let g:neodbg_updatebreak_flag = 0
+function! neodebug#UpdateBreakpointsWindow()
+    let g:neodbg_updatebreak_flag = 1
+    call NeoDebugSendCommand("info breakpoints")
+    let g:neodbg_updatebreak_flag = 0
+
+    let output = ch_readraw(g:neodbg_chan)
+    let alloutput = ''
+    while output != g:neodbg_prompt
+        let alloutput .= output
+        let output = ch_readraw(g:neodbg_chan)
+    endw
+
+    call neodebug#GotoBreakpointsWindow()
+    call append(line("$"), alloutput)
+
 endf
 
 " vim: set foldmethod=marker 

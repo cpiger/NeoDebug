@@ -45,6 +45,8 @@ let g:neodbg_threads_width = 35
 let g:neodbg_threads_height = 10
 
 
+let g:neodbg_chan = 0
+
 let s:neodbg_running = 0
 let s:neodbg_exrc = $HOME.'/neodbg_exrc'
 let s:neodbg_port = 30777 
@@ -66,7 +68,7 @@ let s:breakpoints = {}
 " c - run debugger command
 function! NeoDebug(cmd, ...)  " [mode]
     let usercmd = a:cmd
-    let s:mode = a:0>0 ? a:1 : ''
+    let mode = a:0>0 ? a:1 : ''
 
     if s:neodbg_running == 0
         let s:neodbg_port= 30000 + reltime()[1] % 10000
@@ -139,7 +141,7 @@ function! NeoDebug(cmd, ...)  " [mode]
     " #1  0x00000000004015e2 in main (argc=1, argv=0x5b3480) at sample.c:12
     if s:MyMatch(usercmd, '\v^#(\d+)') " && s:debugging
         let usercmd = "frame " . s:match[1]
-        call s:SendCommand(usercmd)
+        call NeoDebugSendCommand(usercmd, 'n')
         return
     endif
 
@@ -148,9 +150,9 @@ function! NeoDebug(cmd, ...)  " [mode]
     " 2    Thread 83608.0x14dd0 0x00000000773c22da in ntdll!RtlInitString () from C:\\windows\\SYSTEM32\tdll.dll
     " 1    Thread 83608.0x1535c factor (n=1, r=0x22fe48) at factor/factor.c:5
     if s:MyMatch(usercmd, '\v^\s+(\d+)\s+Thread ') "&& s:debugging
-        let usercmd = "thread " . s:match[1]
-        call s:SendCommand(usercmd)
-        call s:SendCommand("bt")
+        let usercmd = "-thread-select " . s:match[1]
+        call NeoDebugSendCommand(usercmd, 'n')
+        call NeoDebugSendCommand("bt", 'n')
         return
     endif
 
@@ -163,13 +165,13 @@ function! NeoDebug(cmd, ...)  " [mode]
         return
     endif
 
-    if s:mode == 'n'  " mode n: jump to source or current callstack, dont exec other gdb commands
+    if mode == 'n'  " mode n: jump to source or current callstack, dont exec other gdb commands
         call NeoDebugExpandPointerExpr()
         return
     endif
 
 
-    call s:SendCommand(usercmd)
+    call NeoDebugSendCommand(usercmd, mode)
 endf
 
 function! NeoDebugStop(cmd)
@@ -200,7 +202,7 @@ func s:NeoDebugStart(cmd)
                     \ 'exit_cb': function('s:NeoDebugEnd'),
                     \ })
 
-        let s:chan = job_getchannel(s:commjob)  
+        let g:neodbg_chan = job_getchannel(s:commjob)  
         let commpty = job_info((s:commjob))['tty_out']
     endif
 
@@ -208,13 +210,13 @@ func s:NeoDebugStart(cmd)
     " exec-interrupt, since many commands don't work properly while the target is
     " running.
     let s:neodbg_init_flag = 1
-    call s:SendCommand('set mi-async on')
+    call NeoDebugSendCommand('set mi-async on')
     if s:ismswin
-        call s:SendCommand('set new-console on')
+        call NeoDebugSendCommand('set new-console on')
     endif
-    call s:SendCommand('set print pretty on')
-    call s:SendCommand('set breakpoint pending on')
-    call s:SendCommand('set pagination off')
+    call NeoDebugSendCommand('set print pretty on')
+    call NeoDebugSendCommand('set breakpoint pending on')
+    call NeoDebugSendCommand('set pagination off')
     let s:neodbg_init_flag = 0
 
     " Install debugger commands in the text window.
@@ -312,6 +314,8 @@ func s:HandleOutput(chan, msg)
         " Handle 
         if debugger_line =~ '^\(\*stopped\|\*running\|=thread-selected\)'
             call s:HandleCursor(debugger_line)
+        elseif debugger_line =~ '^\^done,new-thread-id='
+            call s:HandleCursor(debugger_line)
         elseif debugger_line =~ '^\^done,bkpt=' || debugger_line =~ '=breakpoint-created,'
             call s:HandleNewBreakpoint(debugger_line)
         elseif debugger_line =~ '^=breakpoint-deleted,'
@@ -392,11 +396,11 @@ func! NeoDebugBalloonExpr()
     call s:SendEval(v:beval_text)
     let s:neodbg_balloonexpr_flag = 0
 
-    let output = ch_readraw(s:chan)
+    let output = ch_readraw(g:neodbg_chan)
     let alloutput = ''
     while output != g:neodbg_prompt
         let alloutput .= output
-        let output = ch_readraw(s:chan)
+        let output = ch_readraw(g:neodbg_chan)
     endw
 
     let value = substitute(alloutput, '.*value="\(.*\)"', '\1', '')
@@ -416,11 +420,11 @@ func! NeoDebugBalloonExpr()
         call s:SendEval('*' . s:evalexpr)
         let s:neodbg_balloonexpr_flag = 0
 
-        let output = ch_readraw(s:chan)
+        let output = ch_readraw(g:neodbg_chan)
         let alloutput = ''
         while output != g:neodbg_prompt
             let alloutput .= output
-            let output = ch_readraw(s:chan)
+            let output = ch_readraw(g:neodbg_chan)
         endw
 
         let value = substitute(alloutput, '.*value="\(.*\)"', '\1', '')
@@ -433,8 +437,8 @@ func! NeoDebugBalloonExpr()
 
     " for neodebug#GotoConsoleWindow to display also
     if g:neodbg_ballonshow_with_print == 1
-        call s:SendCommand('p '. v:beval_text)
-        call s:SendCommand('p '. s:evalexpr)
+        call NeoDebugSendCommand('p '. v:beval_text)
+        call NeoDebugSendCommand('p '. s:evalexpr)
     endif
 
     return s:evalFromBalloonExprResult
@@ -453,16 +457,16 @@ fun! NeoDebugComplete(findstart, base)
             let usercmd = 'complete ' .  usercmd
         endif
 
-        call s:SendCommand(usercmd)
+        call NeoDebugSendCommand(usercmd)
 
-        let output = ch_readraw(s:chan)
+        let output = ch_readraw(g:neodbg_chan)
         let s:completers = []
         while output != g:neodbg_prompt
             if output =~ '\~"' 
                 let completer = strpart(output, 2, strlen(output)-5) 
                 call add(s:completers, completer)
             endif
-            let output = ch_readraw(s:chan)
+            let output = ch_readraw(g:neodbg_chan)
         endw
 
         " locate the start of the word
@@ -504,7 +508,6 @@ endf
 "  m_pTempTables = 0x37c6830,
 "  ...
 " }
-let s:neodbg_pointerexpr_flag = 0
 function! NeoDebugExpandPointerExpr()
     if ! s:MyMatch(getline('.'), '\v((\$|\w)+) \=.{-0,} 0x')
         return 0
@@ -532,9 +535,7 @@ function! NeoDebugExpandPointerExpr()
             let cmd = s:match[1] . '.' . cmd
         endif
     endwhile 
-    let s:neodbg_pointerexpr_flag = 1
-    call s:SendCommand("p *" . cmd)
-    let s:neodbg_pointerexpr_flag = 0
+    call NeoDebugSendCommand("p *" . cmd, 'n')
     if foldlevel('.') > 0
         " goto beginning of the fold and close it
         normal [zzc
@@ -549,13 +550,13 @@ func NeoDebugInstallCommandsHotkeys()
 
     command Break call s:SetBreakpoint()
     command Clear call s:ClearBreakpoint()
-    command Step call s:SendCommand('-exec-step')
-    command Over call s:SendCommand('-exec-next')
-    command Finish call s:SendCommand('-exec-finish')
+    command Step call NeoDebugSendCommand('-exec-step', 'n')
+    command Over call NeoDebugSendCommand('-exec-next', 'n')
+    command Finish call NeoDebugSendCommand('-exec-finish', 'n')
     command -nargs=* Run call s:Run(<q-args>)
-    command -nargs=* Arguments call s:SendCommand('-exec-arguments ' . <q-args>)
-    command Stop call s:SendCommand('-exec-interrupt')
-    command Continue call s:SendCommand('-exec-continue')
+    command -nargs=* Arguments call NeoDebugSendCommand('-exec-arguments ' . <q-args>, 'n')
+    command Stop call NeoDebugSendCommand('-exec-interrupt', 'n')
+    command Continue call NeoDebugSendCommand('-exec-continue')
     command -range -nargs=* Evaluate call s:Evaluate(<range>, <q-args>)
     command Winbar call NeoDebugInstallWinbar()
 
@@ -784,13 +785,15 @@ endfunc
 
 " :Next, :Continue, etc - send a command to debugger
 let s:neodbg_sendcmd_flag = 0
-func s:SendCommand(cmd)
+" func NeoDebugSendCommand(cmd)
+function! NeoDebugSendCommand(cmd, ...)  " [mode]
     " echomsg "<GDB>cmd:[".a:cmd."]"
     let usercmd = a:cmd
-    if usercmd != s:neodbg_cmd_historys[-1] 
+    let mode = a:0>0 ? a:1 : ''
+    if usercmd != s:neodbg_cmd_historys[-1] && g:neodbg_updatebreak_flag == 0
         if -1 == match(usercmd, '^complete') && -1 == match(usercmd, '^complete')
             call add(s:neodbg_cmd_historys, usercmd)
-            if s:mode == 'n' && s:neodbg_init_flag == 0
+            if mode == 'n' && s:neodbg_init_flag == 0
                 let s:neodbg_sendcmd_flag = 1
             endif
         endif
@@ -813,7 +816,7 @@ func s:SendKey(key)
 endfunc
 
 func s:SendEval(expr)
-    call s:SendCommand('-data-evaluate-expression "' . a:expr . '"')
+    call NeoDebugSendCommand('-data-evaluate-expression "' . a:expr . '"', 'n')
     let s:evalexpr = a:expr
 endfunc
 
@@ -851,28 +854,27 @@ func s:SetBreakpoint()
     let do_continue = 0
     if !s:stopped
         let do_continue = 1
-        call s:SendCommand('-exec-interrupt')
+        call NeoDebugSendCommand('-exec-interrupt')
         sleep 10m
     endif
-    " call s:SendCommand('-break-insert '
+    " call NeoDebugSendCommand('-break-insert '
     " \ . fnameescape(expand('%:p')) . ':' . line('.'))
-    call s:SendCommand('break '
-                \ . fnameescape(expand('%:p')) . ':' . line('.'))
+    call NeoDebugSendCommand('break '
+                \ . fnameescape(expand('%:p')) . ':' . line('.'), 'n')
     if do_continue
-        call s:SendCommand('-exec-continue')
+        call NeoDebugSendCommand('-exec-continue')
     endif
 endfunc
 
 func s:ClearBreakpoint()
-    " let fname = fnameescape(expand('%:p'))
-    let fname = fnameescape(expand('%:t'))
-    " let fname = bufnr(fname)
-    let fname = fnamemodify(fnamemodify(fname, ":t"), ":p")
+    call win_gotoid(s:startwin)
+    let fname = fnameescape(expand('%:p'))
     let lnum = line('.')
-    " echomsg "s:ClearBreakpoint:fnamelnum".fname.lnum
+    echomsg "ClearBreakpoint:fname:lnum".fname.":".lnum
     for [key, val] in items(s:breakpoints)
         if val['fname'] == fname && val['lnum'] == lnum
-            call ch_sendraw(s:commjob, 'delete ' . key . "\n")
+            " echomsg "val[fname]:lnum".val['fname'].":".val['lnum'].":".key
+            call NeoDebugSendCommand('delete ' . key, 'n')
             " call ch_sendraw(s:commjob, '-break-delete ' . key . "\n")
             " call ch_sendraw(s:commjob, '-break-disable ' . key . "\n")
             " Assume this always wors, the reply is simply "^done".
@@ -885,16 +887,18 @@ endfunc
 
 func s:ToggleBreakpoint()
     call win_gotoid(s:startwin)
-    let fname = fnameescape(expand('%:t'))
-    let fname = fnamemodify(fnamemodify(fname, ":t"), ":p")
+    let fname = fnameescape(expand('%:p'))
     let lnum = line('.')
+    " echomsg "ToggleBreakpoint:fname:lnum".fname.":".lnum
+
     for [key, val] in items(s:breakpoints)
         if val['fname'] == fname && val['lnum'] == lnum
-            call ch_sendraw(s:commjob, 'delete ' . key . "\n")
+            " echomsg "val[fname]:lnum".val['fname'].":".val['lnum'].":".key
+            " call ch_sendraw(s:commjob, 'delete ' . key . "\n")
+            call NeoDebugSendCommand('delete ' . key, 'n')
             " Assume this always wors, the reply is simply "^done".
             exe 'sign unplace ' . (s:break_id + key)
             unlet s:breakpoints[key]
-            " break
             return
         endif
     endfor
@@ -903,9 +907,9 @@ endfunc
 
 func s:Run(args)
     if a:args != ''
-        call s:SendCommand('-exec-arguments ' . a:args)
+        call NeoDebugSendCommand('-exec-arguments ' . a:args, 'n')
     endif
-    call s:SendCommand('-exec-run')
+    call NeoDebugSendCommand('-exec-run', 'n')
 endfunc
 
 func s:Evaluate(range, arg)
@@ -970,14 +974,16 @@ func s:HandleCursor(msg)
 
     if win_gotoid(s:startwin)
         let fname = substitute(a:msg, '.*fullname="\([^"]*\)".*', '\1', '')
+        " let fname = fnamemodify(fnamemodify(fname, ":t"), ":p")
         "fix mswin
         if -1 == match(fname, '\\\\')
             let fname = fname
         else
             let fname = substitute(fname, '\\\\','\\', 'g')
         endif
+        " echomsg "HandleCursor:fname:".fname
 
-        if a:msg =~ '\(\*stopped\|=thread-selected\)' && filereadable(fname)
+        if a:msg =~ '\(\*stopped\|=thread-selected\|new-thread-id=\)' && filereadable(fname)
             let lnum = substitute(a:msg, '.*line="\([^"]*\)".*', '\1', '')
             if lnum =~ '^[0-9]*$'
                 if expand('%:p') != fnamemodify(fname, ':p')
@@ -989,7 +995,7 @@ func s:HandleCursor(msg)
                         exe 'edit ' . fnameescape(fname)
                     endif
                 endif
-                " echomsg "HandleCursor:3fnamelnum=".fname.lnum
+                " echomsg "HandleCursor:fname:lnum=".fname.':'.lnum
                 exe lnum
                 exe 'sign unplace ' . s:pc_id
                 exe 'sign place ' . s:pc_id . ' line=' . lnum . ' name=NeoDebugPC file=' . fname
@@ -1024,6 +1030,8 @@ func s:HandleNewBreakpoint(msg)
     let fname = substitute(a:msg, '.*fullname="\([^"]*\)".*', '\1', '')
     let lnum = substitute(a:msg, '.*line="\([^"]*\)".*', '\1', '')
 
+
+    " let fname = fnamemodify(fnamemodify(fname, ":t"), ":p")
     " echomsg "fname:".fname
     " echomsg "lnum:".lnum
 
