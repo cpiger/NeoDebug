@@ -16,6 +16,7 @@ let s:help_text_short = [
 
 let s:help_text = s:help_text_short
 
+" \ '<C-F9> 	- toggle enable/disable breakpoint on current line',
 function s:UpdateHelpText()
     if s:help_open
         let s:help_text = [
@@ -26,7 +27,6 @@ function s:UpdateHelpText()
             \ '<S-F11>  - step out (finish)',
             \ '<C-F10>	- run to cursor (tb and c)',
             \ '<F9> 	- toggle breakpoint on current line',
-            \ '<C-F9> 	- toggle enable/disable breakpoint on current line',
             \ '\ju or <C-S-F10> - set next statement (tb and jump)',
             \ '<C-P>    - view variable under the cursor (.p)',
             \ '<TAB>    - trigger complete ',

@@ -89,7 +89,6 @@ The following shortcuts is applied that is similar to MSVC:
 	<S-F11> - step out (finish)
 	<C-F10>	- run to cursor (tb and c)
 	<F9> 	- toggle breakpoint on current line
-	<C-F9> 	- toggle enable/disable breakpoint on current line
 	\ju or <C-S-F10> - set next statement (tb and jump)
 	<C-P> 	- view variable under the cursor (.p)
     <TAB>   - trigger complete 
