@@ -327,6 +327,31 @@ function! neodebug#OpenLocals()
     setlocal foldmarker={,}
     setlocal foldmethod=marker
 
+
+    " highlight NeoDebugGoto guifg=Blue
+    hi def link NeoDebugKey Statement
+    hi def link NeoDebugHiLn Statement
+    hi def link NeoDebugGoto Underlined
+    hi def link NeoDebugPtr Underlined
+    hi def link NeoDebugFrame LineNr
+    hi def link NeoDebugCmd Macro
+    " syntax
+    syn keyword NeoDebugKey Function Breakpoint Catchpoint 
+    syn match NeoDebugFrame /\v^#\d+ .*/ contains=NeoDebugGoto
+    syn match NeoDebugGoto /\v<at [^()]+:\d+|file .+, line \d+/
+    syn match NeoDebugCmd /^(gdb).*/
+    syn match NeoDebugPtr /\v(^|\s+)\zs\$?\w+ \=.{-0,} 0x\w+/
+    " highlight the whole line for 
+    " returns for info threads | info break | finish | watchpoint
+    syn match NeoDebugHiLn /\v^\s*(Id\s+Target Id|Num\s+Type|Value returned is|(Old|New) value =|Hardware watchpoint).*$/
+
+    " syntax for perldb
+    syn match NeoDebugCmd /^\s*DB<.*/
+    "	syn match NeoDebugFrame /\v^#\d+ .*/ contains=NeoDebugGoto
+    syn match NeoDebugGoto /\v from file ['`].+' line \d+/
+    syn match NeoDebugGoto /\v at ([^ ]+) line (\d+)/
+    syn match NeoDebugGoto /\v at \(eval \d+\)..[^:]+:\d+/
+
 endfunction
 " Local window
 let s:neodbg_locals_opened = 0
@@ -476,6 +501,30 @@ function! neodebug#OpenThreads()
     setlocal foldcolumn=2
     setlocal foldmarker={,}
     setlocal foldmethod=marker
+
+    " highlight NeoDebugGoto guifg=Blue
+    hi def link NeoDebugKey Statement
+    hi def link NeoDebugHiLn Statement
+    hi def link NeoDebugGoto Underlined
+    hi def link NeoDebugPtr Underlined
+    hi def link NeoDebugFrame LineNr
+    hi def link NeoDebugCmd Macro
+    " syntax
+    syn keyword NeoDebugKey Function Breakpoint Catchpoint 
+    syn match NeoDebugFrame /\v^#\d+ .*/ contains=NeoDebugGoto
+    syn match NeoDebugGoto /\v<at [^()]+:\d+|file .+, line \d+/
+    syn match NeoDebugCmd /^(gdb).*/
+    syn match NeoDebugPtr /\v(^|\s+)\zs\$?\w+ \=.{-0,} 0x\w+/
+    " highlight the whole line for 
+    " returns for info threads | info break | finish | watchpoint
+    syn match NeoDebugHiLn /\v^\s*(Id\s+Target Id|Num\s+Type|Value returned is|(Old|New) value =|Hardware watchpoint).*$/
+
+    " syntax for perldb
+    syn match NeoDebugCmd /^\s*DB<.*/
+    "	syn match NeoDebugFrame /\v^#\d+ .*/ contains=NeoDebugGoto
+    syn match NeoDebugGoto /\v from file ['`].+' line \d+/
+    syn match NeoDebugGoto /\v at ([^ ]+) line (\d+)/
+    syn match NeoDebugGoto /\v at \(eval \d+\)..[^:]+:\d+/
 
 endfunction
 " Threads window
@@ -635,18 +684,29 @@ function! neodebug#GotoBreakpointsWindow()
     exec neodbg_winnr . "wincmd w"
     " call win_gotoid(g:neodbg_breakpoints_win)
 endf
-function! neodebug#UpdateBreakpointsWindow()
-    call neodebug#GotoBreakpointsWindow()
-    silent exec '0,' . line("$") . 'd _'
-    call NeoDebugSendCommand("info breakpoints", 'b')
-
-endf
 
 function! neodebug#UpdateLocalsWindow()
     call neodebug#GotoLocalsWindow()
     silent exec '0,' . line("$") . 'd _'
-    call NeoDebugSendCommand("info locals", 'l')
+    call NeoDebugSendCommand("info locals", 'u')
+endf
 
+function! neodebug#UpdateStackFramesWindow()
+    call neodebug#GotoStackFramesWindow()
+    silent exec '0,' . line("$") . 'd _'
+    call NeoDebugSendCommand("backtrace", 'u')
+endf
+
+function! neodebug#UpdateThreadsWindow()
+    call neodebug#GotoThreadsWindow()
+    silent exec '0,' . line("$") . 'd _'
+    call NeoDebugSendCommand("info threads", 'u')
+endf
+
+function! neodebug#UpdateBreakpointsWindow()
+    call neodebug#GotoBreakpointsWindow()
+    silent exec '0,' . line("$") . 'd _'
+    call NeoDebugSendCommand("info breakpoints", 'u')
 endf
 
 " vim: set foldmethod=marker 

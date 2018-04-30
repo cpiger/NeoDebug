@@ -38,7 +38,7 @@ Screenshot:
 
 5. info locals, breakpoints, threads, bt
 
-![info](https://github.com/cpiger/NeoDebug/blob/master/NeoDebugInfobl.png)
+![info](https://github.com/cpiger/NeoDebug/blob/master/NeoDebugInfolstb.png)
 
 
 ## Installation
