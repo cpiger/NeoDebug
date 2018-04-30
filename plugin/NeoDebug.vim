@@ -357,6 +357,7 @@ func s:HandleOutput(chan, msg)
                 let s:appendline = substitute(s:appendline, '\\"', '"', 'g')
                 call append(line("$")-1, s:appendline)
                 let s:appendline = ''
+                redraw
             endif
         endif
         exec "wincmd ="
@@ -838,7 +839,6 @@ func NeoDebugDeleteCommandsHotkeys()
     "unlet s:breakpoints
 
     unmap <F9>
-    unmap <C-F9>
     unmap <Leader>ju
     unmap <C-S-F10>
     unmap <C-F10>
