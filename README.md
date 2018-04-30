@@ -71,10 +71,13 @@ See Screenshot.
 
 	:NeoDebug         "start
 
-    :OpenLocal        "open  [info locals] window
-    :CloseLocal       "close [info locals] window
-    :OpenBreak        "open  [info breakpoints] window
-    :CloseBreak       "close [info breakpoints] window
+    :OpenLocals        "open  [info locals] window
+    :OpenStacks        "open  [backtrace] window
+    :CloseStacks       "close [backtrace] window
+    :OpenThreads       "open  [info threads] window
+    :CloseThreads       "close [info threads] window
+    :OpenBreaks        "open  [info breakpoints] window
+    :CloseBreaks       "close [info breakpoints] window
 
 
 The following shortcuts is applied that is similar to MSVC: 
