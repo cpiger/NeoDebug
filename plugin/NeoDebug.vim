@@ -353,7 +353,8 @@ func s:HandleOutput(chan, msg)
             let s:appendline .= strpart(updateinfo_line, 2, strlen(updateinfo_line)-3)
             if updateinfo_line =~ '\\n"\_$'
                 " echomsg "s:appendfile:".s:appendline
-                let s:appendline = substitute(s:appendline, '\\n\|\\t\|\\032\\032', '', 'g')
+                let s:appendline = substitute(s:appendline, '\\n\|\\032\\032', '', 'g')
+                let s:appendline = substitute(s:appendline, '\\t', "\t\t\t", 'g')
                 let s:appendline = substitute(s:appendline, '\\"', '"', 'g')
                 call append(line("$")-1, s:appendline)
                 let s:appendline = ''
@@ -423,6 +424,7 @@ func s:HandleOutput(chan, msg)
             if debugger_line =~ '\\n"\_$'
                 " echomsg "s:appendfile:".s:appendline
                 let s:appendline = substitute(s:appendline, '\\n\|\\032\\032', '', 'g')
+                let s:appendline = substitute(s:appendline, '\\t', "\t\t\t", 'g')
                 let s:appendline = substitute(s:appendline, '\\"', '"', 'g')
                 call append(line("$"), s:appendline)
                 let s:appendline = ''
