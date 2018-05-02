@@ -357,9 +357,6 @@ endfunction
 let s:neodbg_locals_opened = 0
 function! neodebug#OpenLocalsWindow()
     " call NeoDebugGotoStartWin()
-    " if s:neodbg_locals_opened == 1
-        " return
-    " endif
     let s:neodbg_locals_opened = 1
     let bufnum = bufnr(g:neodbg_locals_name)
 
@@ -372,11 +369,8 @@ function! neodebug#OpenLocalsWindow()
     endif
 
     " Create the tag explorer window
-    " exe 'silent!  botright ' . g:neodbg_locals_width. 'vsplit ' . wcmd
-    " exe 'silent!  ' . g:neodbg_local_height. 'split ' . wcmd
-    " exe 'silent!  botright ' . g:neodbg_breakpoints_width. 'vsplit ' . wcmd
     exe 'silent!  botright ' . g:neodbg_locals_width. 'vsplit ' . wcmd
-    nnoremenu WinBar.Locals   :echo<CR>
+    nnoremenu WinBar.Locals   :call neodebug#UpdateLocalsWindow()<CR>
 endfunction
 
 function neodebug#CloseLocalsWindow()
@@ -426,7 +420,6 @@ function! neodebug#OpenStackFrames()
 endfunction
 
 " StackFrames window
-let s:neodbg_stackframes_opened = 0
 function! neodebug#OpenStackFramesWindow()
     " call NeoDebugGotoStartWin()
 
@@ -434,10 +427,6 @@ function! neodebug#OpenStackFramesWindow()
         call neodebug#OpenLocals()
     endif
 
-    " if s:neodbg_stackframes_opened == 1
-        " return
-    " endif
-    let s:neodbg_stackframes_opened = 1
     call  neodebug#GotoLocalsWindow()
 
     let bufnum = bufnr(g:neodbg_stackframes_name)
@@ -451,7 +440,6 @@ function! neodebug#OpenStackFramesWindow()
     endif
 
     " Create the tag explorer window
-    " exe 'silent!  botright ' . g:neodbg_stackframes_height. 'split ' . wcmd
     exe 'silent!  ' . g:neodbg_stackframes_height. 'split ' . wcmd
     exec "wincmd ="
     nnoremenu WinBar.StackFrames/Threads   :call neodebug#UpdateStackOrThreads()<CR>
@@ -463,12 +451,8 @@ function neodebug#CloseStackFramesWindow()
         call neodebug#GotoStackFramesWindow()
         let s:neodbg_save_cursor = getpos(".")
         close
-        " exec "wincmd ="
-        let s:neodbg_stackframes_opened = 0
         return 1
     endif
-    " exec "wincmd ="
-    let s:neodbg_stackframes_opened = 0
     return 0
 endfunction
 
@@ -538,16 +522,10 @@ function! neodebug#OpenThreads()
 
 endfunction
 " Threads window
-let s:neodbg_threads_opened = 0
 function! neodebug#OpenThreadsWindow()
-    " call NeoDebugGotoStartWin()
     if s:neodbg_locals_opened == 0
         call neodebug#OpenLocals()
     endif
-    " if s:neodbg_threads_opened == 1
-        " return
-    " endif
-    let s:neodbg_threads_opened = 1
     call  neodebug#GotoLocalsWindow()
     let bufnum = bufnr(g:neodbg_threads_name)
 
@@ -560,10 +538,8 @@ function! neodebug#OpenThreadsWindow()
     endif
 
     " Create the tag explorer window
-    " exe 'silent!  botright ' . g:neodbg_threads_height. 'split ' . wcmd
     exe 'silent!  ' . g:neodbg_threads_height. 'split ' . wcmd
     exec "wincmd ="
-    " nnoremenu WinBar.Threads   :echo<CR>
     nnoremenu WinBar.StackFrames/Threads   :call neodebug#UpdateStackOrThreads()<CR>
 endfunction
 
@@ -573,12 +549,8 @@ function neodebug#CloseThreadsWindow()
         call neodebug#GotoThreadsWindow()
         let s:neodbg_save_cursor = getpos(".")
         close
-        " exec "wincmd ="
-        let s:neodbg_threads_opened = 0
         return 1
     endif
-    " exec "wincmd ="
-    let s:neodbg_threads_opened = 0
     return 0
 endfunction
 
@@ -646,17 +618,11 @@ function! neodebug#OpenBreakpoints()
 
 endfunction
 " Breakpoints window
-let s:neodbg_breakpoints_opened = 0
 function! neodebug#OpenBreakpointsWindow()
-    " call NeoDebugGotoStartWin()
     if s:neodbg_locals_opened == 0
         call neodebug#OpenLocals()
     endif
     call  neodebug#GotoLocalsWindow()
-    " if s:neodbg_breakpoints_opened == 1
-        " return
-    " endif
-    let s:neodbg_breakpoints_opened = 1
     let bufnum = bufnr(g:neodbg_breakpoints_name)
 
     if bufnum == -1
@@ -668,11 +634,9 @@ function! neodebug#OpenBreakpointsWindow()
     endif
 
     " Create the tag explorer window
-    " exe 'silent!  botright ' . g:neodbg_breakpoints_width. 'vsplit ' . wcmd
     exe 'silent!  ' . g:neodbg_breakpoints_height. 'split ' . wcmd
     exec "wincmd ="
-    " nnoremenu WinBar.Breakpoints   :NeoDebug info breakpoints<CR>
-    nnoremenu WinBar.Breakpoints   :echo<CR>
+    nnoremenu WinBar.Breakpoints   :call neodebug#UpdateBreakpointsWindow()<CR>
 endfunction
 
 function neodebug#CloseBreakpointsWindow()
@@ -681,12 +645,8 @@ function neodebug#CloseBreakpointsWindow()
         call neodebug#GotoBreakpointsWindow()
         let s:neodbg_save_cursor = getpos(".")
         close
-        " exec "wincmd ="
-        let s:neodbg_breakpoints_opened = 0
         return 1
     endif
-    " exec "wincmd ="
-    let s:neodbg_breakpoints_opened = 0
     return 0
 endfunction
 

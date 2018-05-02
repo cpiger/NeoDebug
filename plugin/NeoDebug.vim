@@ -113,6 +113,7 @@ function! NeoDebug(cmd, ...)  " [mode]
         call neodebug#OpenConsole()
         let s:neodbg_console_win = win_getid(winnr())
 
+        let s:neodbg_quitted = 0
         let s:neodbg_running = 1
 
         return
@@ -303,13 +304,13 @@ let s:comm_msg = ''
 " Handle a message received from debugger
 func s:HandleOutput(chan, msg)
     if g:neodbg_debuginfo == 1
-        echomsg "<GDB>:".a:msg
+        echomsg "<GDB>:".a:msg."[s:mode:".s:mode."]"
     endif
 
     let cur_mode = mode()
     let cur_wid = win_getid(winnr())
 
-    " do not output completers
+    " skip complete command,do not output completers
     if  "complete" == strpart(a:msg, 2, strlen("complete"))
         let s:completer_skip_flag = 1
     endif
@@ -318,52 +319,53 @@ func s:HandleOutput(chan, msg)
         let s:comm_msg .= a:msg
     endif
 
-    " echomsg "s:comm_msg" .s:comm_msg
     if  "complete" == strpart(s:comm_msg, 2, strlen("complete"))  && ( s:comm_msg =~  g:neodbg_prompt)
         let s:completer_skip_flag = 0
         let s:comm_msg = ''
         return
     endif
 
-        "complete" == strpart(a:msg, 2, strlen("complete"))
-        if  (s:mode == 'u') && ( "info breakpoints" == strpart(a:msg, 2, strlen("info breakpoints")) || "info locals" == strpart(a:msg, 2, strlen("info locals")) || "backtrace" == strpart(a:msg, 2, strlen("backtrace")) || "info threads" == strpart(a:msg, 2, strlen("info threads")))
-            let s:updateinfo_skip_flag = 1
-        endif
+
+    " Handle update window
+    if  (s:mode == 'u') && ( "info breakpoints" == strpart(a:msg, 2, strlen("info breakpoints")) || "info locals" == strpart(a:msg, 2, strlen("info locals")) || "backtrace" == strpart(a:msg, 2, strlen("backtrace")) || "info threads" == strpart(a:msg, 2, strlen("info threads")))
+        let s:updateinfo_skip_flag = 1
+    endif
 
     if s:updateinfo_skip_flag == 1
         let s:comm_msg .= a:msg
         let updateinfo_line = a:msg
-
-        if  "info locals" == strpart(s:comm_msg, 2, strlen("info locals"))
-            call neodebug#GotoLocalsWindow()
-        endif
-
-        if  "backtrace" == strpart(s:comm_msg, 2, strlen("backtrace"))
-            call neodebug#GotoStackFramesWindow()
-        endif
-
-        if  "info threads" == strpart(s:comm_msg, 2, strlen("info threads"))
-            call neodebug#GotoThreadsWindow()
-        endif
-
-        if "info breakpoints" == strpart(s:comm_msg, 2, strlen("info breakpoints"))
-            call neodebug#GotoBreakpointsWindow()
-        endif
-
-        if updateinfo_line =~ '^\~"' 
-            let updateinfo_line = substitute(updateinfo_line, '\~"\\t', "\~\"\t\t", 'g')
-            let updateinfo_line = substitute(updateinfo_line, '\\"', '"', 'g')
-            let updateinfo_line = substitute(updateinfo_line, '\\\\', '\\', 'g')
-            let s:appendline .= strpart(updateinfo_line, 2, strlen(updateinfo_line)-3)
-            if updateinfo_line =~ '\\n"\_$'
-                " echomsg "s:appendfile:".s:appendline
-                let s:appendline = substitute(s:appendline, '\\n\|\\032\\032', '', 'g')
-                call append(line("$")-1, s:appendline)
-                let s:appendline = ''
-                redraw
+        if  s:neodbg_quitted != 1
+            if  "info locals" == strpart(s:comm_msg, 2, strlen("info locals"))
+                call neodebug#GotoLocalsWindow()
             endif
+
+            if  "backtrace" == strpart(s:comm_msg, 2, strlen("backtrace"))
+                call neodebug#GotoStackFramesWindow()
+            endif
+
+            if  "info threads" == strpart(s:comm_msg, 2, strlen("info threads"))
+                call neodebug#GotoThreadsWindow()
+            endif
+
+            if "info breakpoints" == strpart(s:comm_msg, 2, strlen("info breakpoints"))
+                call neodebug#GotoBreakpointsWindow()
+            endif
+
+            if updateinfo_line =~ '^\~"'  
+                let updateinfo_line = substitute(updateinfo_line, '\~"\\t', "\~\"\t\t", 'g')
+                let updateinfo_line = substitute(updateinfo_line, '\\"', '"', 'g')
+                let updateinfo_line = substitute(updateinfo_line, '\\\\', '\\', 'g')
+                let s:appendline .= strpart(updateinfo_line, 2, strlen(updateinfo_line)-3)
+                if updateinfo_line =~ '\\n"\_$'
+                    " echomsg "s:appendfile:".s:appendline
+                    let s:appendline = substitute(s:appendline, '\\n\|\\032\\032', '', 'g')
+                    call append(line("$")-1, s:appendline)
+                    let s:appendline = ''
+                    redraw
+                endif
+            endif
+            exec "wincmd ="
         endif
-        exec "wincmd ="
         call neodebug#GotoConsoleWindow()
     endif
 
@@ -404,8 +406,8 @@ func s:HandleOutput(chan, msg)
         elseif debugger_line =~ '^=breakpoint-deleted,'
             call s:HandleBreakpointDelete(debugger_line)
         elseif debugger_line =~ '^\(=thread-created,id=\|=thread-selected,id=\|=thread-exited,id=\)'
-            if s:neodbg_quiting == 0
-                call neodebug#UpdateThreadsWindow()
+            if !s:neodbg_quitted
+                " call neodebug#UpdateThreadsWindow()
             endif
         elseif debugger_line =~ '^\^done,value='
             call s:HandleEvaluate(debugger_line)
@@ -875,36 +877,42 @@ func NeoDebugDeleteCommandsHotkeys()
 endfunc
 
 " :Next, :Continue, etc - send a command to debugger
-let s:neodbg_quiting = 0
+let s:neodbg_quitted = 0
 let s:neodbg_sendcmd_flag = 0
 " func NeoDebugSendCommand(cmd)
 function! NeoDebugSendCommand(cmd, ...)  " [mode]
     " echomsg "<GDB>cmd:[".a:cmd."]"
     let usercmd = a:cmd
-    if usercmd == 'q'
-        let  s:neodbg_quiting = 1
-    endif
     let mode = a:0>0 ? a:1 : ''
     let s:mode = mode
-    if usercmd != s:neodbg_cmd_historys[-1] && mode != 'u'
-        if -1 == match(usercmd, '^complete') && -1 == match(usercmd, '^complete')
-            call add(s:neodbg_cmd_historys, usercmd)
-            if mode == 'n' && s:neodbg_init_flag == 0
+    if  mode == 'u'
+        let s:neodbg_sendcmd_flag = 0
+    else
+        if usercmd != s:neodbg_cmd_historys[-1]
+            if -1 == match(usercmd, '^complete') && -1 == match(usercmd, '^complete')
+                call add(s:neodbg_cmd_historys, usercmd)
+                if mode == 'n' && s:neodbg_init_flag == 0
+                    " echomsg "<GDB1>:[".usercmd."][mode:".mode."]"
+                    let s:neodbg_sendcmd_flag = 1
+                endif
+            endif
+        else
+            if s:neodbg_balloonexpr_flag == 0 && -1 == match(usercmd, '^set pagination off')
+                " echomsg "<GDB2>:[".usercmd."][mode:".mode."]"
                 let s:neodbg_sendcmd_flag = 1
             endif
-        endif
-    else
-        if s:neodbg_balloonexpr_flag == 0 && -1 == match(usercmd, '^set pagination off')
-            let s:neodbg_sendcmd_flag = 1
         endif
     endif
 
     if g:neodbg_debuginfo == 1
         silent echohl ModeMsg
-        echomsg "<GDB>:[".usercmd."]"
+        echomsg "<GDB>:[".usercmd."][mode:".mode."]"
         silent echohl None
     endif
     call ch_sendraw(s:commjob, usercmd . "\n")
+    if usercmd == 'q'
+        let  s:neodbg_quitted = 1
+    endif
 endfunc
 
 func s:SendKey(key)
@@ -925,7 +933,7 @@ endfunc
 func s:BufferRead()
     let fname = expand('<afile>:p')
     " let fname = fnamemodify(expand('<afile>:t'), ":p")
-    echomsg "BufferRead:".fname
+    " echomsg "BufferRead:".fname
     for [nr, entry] in items(s:breakpoints)
         if entry['fname'] == fname
             call s:PlaceSign(nr, entry)
@@ -937,7 +945,7 @@ endfunc
 func s:BufferUnload()
     let fname = expand('<afile>:p')
     " let fname = fnamemodify(expand('<afile>:t'), ":p")
-    echomsg "BufferUnload:".fname
+    " echomsg "BufferUnload:".fname
     for [nr, entry] in items(s:breakpoints)
         if entry['fname'] == fname
             let entry['placed'] = 0
@@ -968,7 +976,7 @@ func s:ClearBreakpoint()
     call win_gotoid(s:startwin)
     let fname = fnameescape(expand('%:p'))
     let lnum = line('.')
-    echomsg "ClearBreakpoint:fname:lnum".fname.":".lnum
+    " echomsg "ClearBreakpoint:fname:lnum".fname.":".lnum
     for [key, val] in items(s:breakpoints)
         if val['fname'] == fname && val['lnum'] == lnum
             " echomsg "val[fname]:lnum".val['fname'].":".val['lnum'].":".key
