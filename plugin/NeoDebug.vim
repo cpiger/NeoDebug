@@ -87,15 +87,15 @@ function! NeoDebug(cmd, ...)  " [mode]
         call neodebug#OpenStackFrames()
         let g:neodbg_stackframes_win = win_getid(winnr())
 
-        call neodebug#OpenThreads()
-        let g:neodbg_threads_win = win_getid(winnr())
+        " call neodebug#OpenThreads()
+        " let g:neodbg_threads_win = win_getid(winnr())
 
         call neodebug#OpenBreakpoints()
         let g:neodbg_breakpoints_win = win_getid(winnr())
 
 
         call neodebug#CloseBreakpointsWindow()
-        call neodebug#CloseThreadsWindow()
+        " call neodebug#CloseThreadsWindow()
         call neodebug#CloseStackFramesWindow()
         call neodebug#CloseLocalsWindow()
         call s:NeoDebugStart(usercmd)
@@ -258,9 +258,7 @@ func s:NeoDebugEnd(job, status)
     quit
     call neodebug#GotoBreakpointsWindow()
     quit
-    call neodebug#GotoThreadsWindow()
-    quit
-    call neodebug#GotoStackFramesWindow()
+    call neodebug#GotoStackOrThreadsWindow()
     quit
     call neodebug#GotoLocalsWindow()
     quit
@@ -338,11 +336,11 @@ func s:HandleOutput(chan, msg)
         endif
 
         if  "backtrace" == strpart(s:comm_msg, 2, strlen("backtrace"))
-            call neodebug#GotoStackFramesWindow()
+            call neodebug#GotoStackOrThreadsWindow()
         endif
 
         if  "info threads" == strpart(s:comm_msg, 2, strlen("info threads"))
-            call neodebug#GotoThreadsWindow()
+            call neodebug#GotoStackOrThreadsWindow()
         endif
 
         if "info breakpoints" == strpart(s:comm_msg, 2, strlen("info breakpoints"))
@@ -1248,11 +1246,11 @@ command! -nargs=* -complete=file NeoDebug :call NeoDebug(<q-args>)
 command! -nargs=* -complete=file NeoDebugStop :call NeoDebugStop(<q-args>)
 command!  OpenLocal :call neodebug#OpenLocalsWindow()
 command!  OpenStack :call neodebug#OpenStackFramesWindow()
-command!  OpenThread :call neodebug#OpenThreadsWindow()
+" command!  OpenThread :call neodebug#OpenThreadsWindow()
 command!  OpenBreak :call neodebug#OpenBreakpointsWindow()
 " command!  CloseLocal :call neodebug#CloseLocalsWindow()
 command!  CloseStack :call neodebug#CloseStackFramesWindow()
-command!  CloseThread :call neodebug#CloseThreadsWindow()
+" command!  CloseThread :call neodebug#CloseThreadsWindow()
 command!  CloseBreak :call neodebug#CloseBreakpointsWindow()
 
 " vim: set foldmethod=marker 

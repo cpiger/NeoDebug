@@ -453,13 +453,13 @@ function! neodebug#OpenStackFramesWindow()
     " exe 'silent!  botright ' . g:neodbg_stackframes_height. 'split ' . wcmd
     exe 'silent!  ' . g:neodbg_stackframes_height. 'split ' . wcmd
     exec "wincmd ="
-    nnoremenu WinBar.StackFrames   :echo<CR>
+    nnoremenu WinBar.StackFrames/Threads   :call neodebug#UpdateStackOrThreads()<CR>
 endfunction
 
 function neodebug#CloseStackFramesWindow()
     let winnr = bufwinnr(g:neodbg_stackframes_name)
     if winnr != -1
-        call neodebug#GotoStackFramesWindow()
+        call neodebug#GotoStackOrThreadsWindow()
         let s:neodbg_save_cursor = getpos(".")
         close
         " exec "wincmd ="
@@ -471,7 +471,7 @@ function neodebug#CloseStackFramesWindow()
     return 0
 endfunction
 
-function! neodebug#GotoStackFramesWindow()
+function! neodebug#GotoStackOrThreadsWindow()
     if bufname("%") == g:neodbg_stackframes_name
         return
     endif
@@ -480,106 +480,6 @@ function! neodebug#GotoStackFramesWindow()
         " if multi-tab or the buffer is hidden
         call neodebug#OpenStackFramesWindow()
         let neodbg_winnr = bufwinnr(g:neodbg_stackframes_name)
-    endif
-    exec neodbg_winnr . "wincmd w"
-endf
-
-
-function! neodebug#OpenThreads()
-
-    call neodebug#OpenThreadsWindow()
-
-    setlocal buftype=nofile
-    setlocal complete=.
-    setlocal noswapfile
-    setlocal nowrap
-    setlocal nobuflisted
-    setlocal nonumber
-    setlocal winfixwidth
-    setlocal cursorline
-
-    setlocal foldcolumn=2
-    setlocal foldmarker={,}
-    setlocal foldmethod=marker
-
-    " highlight NeoDebugGoto guifg=Blue
-    hi def link NeoDebugKey Statement
-    hi def link NeoDebugHiLn Statement
-    hi def link NeoDebugGoto Underlined
-    hi def link NeoDebugPtr Underlined
-    hi def link NeoDebugFrame LineNr
-    hi def link NeoDebugCmd Macro
-    " syntax
-    syn keyword NeoDebugKey Function Breakpoint Catchpoint 
-    syn match NeoDebugFrame /\v^#\d+ .*/ contains=NeoDebugGoto
-    syn match NeoDebugGoto /\v<at [^()]+:\d+|file .+, line \d+/
-    syn match NeoDebugCmd /^(gdb).*/
-    syn match NeoDebugPtr /\v(^|\s+)\zs\$?\w+ \=.{-0,} 0x\w+/
-    " highlight the whole line for 
-    " returns for info threads | info break | finish | watchpoint
-    syn match NeoDebugHiLn /\v^\s*(Id\s+Target Id|Num\s+Type|Value returned is|(Old|New) value =|Hardware watchpoint).*$/
-
-    " syntax for perldb
-    syn match NeoDebugCmd /^\s*DB<.*/
-    "	syn match NeoDebugFrame /\v^#\d+ .*/ contains=NeoDebugGoto
-    syn match NeoDebugGoto /\v from file ['`].+' line \d+/
-    syn match NeoDebugGoto /\v at ([^ ]+) line (\d+)/
-    syn match NeoDebugGoto /\v at \(eval \d+\)..[^:]+:\d+/
-
-endfunction
-" Threads window
-let s:neodbg_threads_opened = 0
-function! neodebug#OpenThreadsWindow()
-    " call NeoDebugGotoStartWin()
-    if s:neodbg_locals_opened == 0
-        call neodebug#OpenLocals()
-    endif
-    if s:neodbg_threads_opened == 1
-        return
-    endif
-    let s:neodbg_threads_opened = 1
-    call  neodebug#GotoLocalsWindow()
-    let bufnum = bufnr(g:neodbg_threads_name)
-
-    if bufnum == -1
-        " Create a new buffer
-        let wcmd = g:neodbg_threads_name
-    else
-        " Edit the existing buffer
-        let wcmd = '+buffer' . bufnum
-    endif
-
-    " Create the tag explorer window
-    " exe 'silent!  botright ' . g:neodbg_threads_height. 'split ' . wcmd
-    exe 'silent!  ' . g:neodbg_threads_height. 'split ' . wcmd
-    exec "wincmd ="
-    nnoremenu WinBar.Threads   :echo<CR>
-endfunction
-
-function neodebug#CloseThreadsWindow()
-    let winnr = bufwinnr(g:neodbg_threads_name)
-    if winnr != -1
-        call neodebug#GotoThreadsWindow()
-        let s:neodbg_save_cursor = getpos(".")
-        close
-        " exec "wincmd ="
-        let s:neodbg_threads_opened = 0
-        return 1
-    endif
-    " exec "wincmd ="
-    let s:neodbg_threads_opened = 0
-    return 0
-endfunction
-
-function! neodebug#GotoThreadsWindow()
-    if bufname("%") == g:neodbg_threads_name
-        return
-    endif
-    let neodbg_winnr = bufwinnr(g:neodbg_threads_name)
-    if neodbg_winnr == -1
-        " if multi-tab or the buffer is hidden
-        call neodebug#OpenThreadsWindow()
-        let neodbg_winnr = bufwinnr(g:neodbg_threads_name)
     endif
     exec neodbg_winnr . "wincmd w"
 endf
@@ -692,13 +592,14 @@ function! neodebug#UpdateLocalsWindow()
 endf
 
 function! neodebug#UpdateStackFramesWindow()
-    call neodebug#GotoStackFramesWindow()
+    " call neodebug#GotoStackFramesWindow()
+    call neodebug#GotoStackOrThreadsWindow()
     silent exec '0,' . line("$") . 'd _'
     call NeoDebugSendCommand("backtrace", 'u')
 endf
 
 function! neodebug#UpdateThreadsWindow()
-    call neodebug#GotoThreadsWindow()
+    call neodebug#GotoStackOrThreadsWindow()
     silent exec '0,' . line("$") . 'd _'
     call NeoDebugSendCommand("info threads", 'u')
 endf
@@ -709,4 +610,11 @@ function! neodebug#UpdateBreakpointsWindow()
     call NeoDebugSendCommand("info breakpoints", 'u')
 endf
 
+function! neodebug#UpdateStackOrThreads()
+    if s:neodbg_stackframes_opened == 1
+        call neodebug#UpdateThreadsWindow()
+    else
+        call neodebug#UpdateStackFramesWindow()
+    endif
+endfunction
 " vim: set foldmethod=marker 
