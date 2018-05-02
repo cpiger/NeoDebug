@@ -1290,16 +1290,16 @@ endfunction
 
 command! -nargs=* -complete=file NeoDebug :call NeoDebug(<q-args>)
 command! -nargs=* -complete=file NeoDebugStop :call NeoDebugStop(<q-args>)
-command!  OpenLocal :call neodebug#UpdateLocalsWindow()
-command!  OpenRegisger :call neodebug#UpdateRegistersWindow()
-command!  OpenStack :call neodebug#UpdateStackFramesWindow()
-command!  OpenThread :call neodebug#UpdateThreadsWindow()
-command!  OpenBreak :call neodebug#UpdateBreakpointsWindow()
+command!  OpenLocals :call neodebug#UpdateLocalsWindow()
+command!  OpenRegisgers :call neodebug#UpdateRegistersWindow()
+command!  OpenStacks :call neodebug#UpdateStackFramesWindow()
+command!  OpenThreads :call neodebug#UpdateThreadsWindow()
+command!  OpenBreaks :call neodebug#UpdateBreakpointsWindow()
 
-command!  CloseLocal :call neodebug#CloseLocalsWindow()
-command!  CloseRegister :call neodebug#CloseRegistersWindow()
-command!  CloseStack :call neodebug#CloseStackFramesWindow()
-command!  CloseThread :call neodebug#CloseThreadsWindow()
-command!  CloseBreak :call neodebug#CloseBreakpointsWindow()
+command!  CloseLocals :call neodebug#CloseLocalsWindow()
+command!  CloseRegisters :call neodebug#CloseRegistersWindow()
+command!  CloseStacks :call neodebug#CloseStackFramesWindow()
+command!  CloseThreads :call neodebug#CloseThreadsWindow()
+command!  CloseBreaks :call neodebug#CloseBreakpointsWindow()
 
 " vim: set foldmethod=marker 

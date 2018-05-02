@@ -72,11 +72,15 @@ See Screenshot.
 	:NeoDebug         "start
 
     :OpenLocals        "open  [info locals] window
+    :OpenRegisters     "open  [info registers] window
     :OpenStacks        "open  [backtrace] window
-    :CloseStacks       "close [backtrace] window
     :OpenThreads       "open  [info threads] window
-    :CloseThreads       "close [info threads] window
     :OpenBreaks        "open  [info breakpoints] window
+
+    :CloseLocals       "close [info locals] window
+    :CloseRegisters    "close [info registers] window
+    :CloseStacks       "close [backtrace] window
+    :CloseThreads      "close [info threads] window
     :CloseBreaks       "close [info breakpoints] window
 
 

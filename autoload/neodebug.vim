@@ -355,7 +355,8 @@ function! neodebug#OpenLocals()
 endfunction
 " Local window
 let s:neodbg_locals_opened = 0
-function! neodebug#OpenLocalsWindow()
+function! neodebug#OpenLocalsWindow(...)
+    let para = a:0>0 ? a:1 : 'v'
     " call NeoDebugGotoStartWin()
     let s:neodbg_locals_opened = 1
     let bufnum = bufnr(g:neodbg_locals_name)
@@ -369,7 +370,11 @@ function! neodebug#OpenLocalsWindow()
     endif
 
     " Create the tag explorer window
-    exe 'silent!  botright ' . g:neodbg_locals_width. 'vsplit ' . wcmd
+    if para == 'v'
+        exe 'silent!  botright ' . g:neodbg_locals_width. 'vsplit ' . wcmd
+    elseif para == 'h'
+        exe 'silent!  ' . g:neodbg_locals_height. 'split ' . wcmd
+    endif
     nnoremenu WinBar.Locals/Registers   :call neodebug#UpdateLocalsOrRegisters()<CR>
 endfunction
 
@@ -393,11 +398,30 @@ function! neodebug#GotoLocalsWindow()
     let neodbg_winnr = bufwinnr(g:neodbg_locals_name)
     let neodbg_winnr_register = bufwinnr(g:neodbg_registers_name)
 
+    let neodbg_winnr_stack = bufwinnr(g:neodbg_stackframes_name)
+    let neodbg_winnr_thread = bufwinnr(g:neodbg_threads_name)
+
+    let neodbg_winnr_break = bufwinnr(g:neodbg_breakpoints_name)
+
     if neodbg_winnr == -1
         if neodbg_winnr_register == -1
             " if multi-tab or the buffer is hidden
-            call neodebug#OpenLocals()
+            if neodbg_winnr_stack != -1
+                call neodebug#GotoStackFramesWindow()
+                call neodebug#OpenLocalsWindow('h')
+            elseif neodbg_winnr_thread != -1
+                call neodebug#GotoThreadsWindow()
+                call neodebug#OpenLocalsWindow('h')
+            elseif neodbg_winnr_break != -1
+                call neodebug#GotoBreakpointsWindow()
+                call neodebug#OpenLocalsWindow('h')
+            else
+                call neodebug#OpenLocals()
+            endif
+
+            exec "wincmd ="
             let neodbg_winnr = bufwinnr(g:neodbg_locals_name)
+
         else
             call neodebug#GotoRegistersWindow()
             let bufnum = bufnr(g:neodbg_locals_name)
@@ -452,12 +476,9 @@ function! neodebug#OpenRegisters()
 endfunction
 
 " Registers window
-function! neodebug#OpenRegistersWindow()
-    if s:neodbg_locals_opened == 0
-        call neodebug#OpenLocals()
-    endif
-    call  neodebug#GotoLocalsWindow()
-    let bufnum = bufnr(g:neodbg_threads_name)
+function! neodebug#OpenRegistersWindow(...)
+    let para = a:0>0 ? a:1 : 'v'
+    let bufnum = bufnr(g:neodbg_registers_name)
 
     if bufnum == -1
         " Create a new buffer
@@ -468,8 +489,13 @@ function! neodebug#OpenRegistersWindow()
     endif
 
     " Create the tag explorer window
-    exe 'silent!  ' . g:neodbg_registers_height. 'split ' . wcmd
-    exec "wincmd ="
+    if para == 'v'
+        exe 'silent!  botright ' . g:neodbg_registers_width. 'vsplit ' . wcmd
+    elseif para == 'h'
+        exe 'silent!  ' . g:neodbg_registers_height. 'split ' . wcmd
+    endif
+    " exe 'silent!  ' . g:neodbg_registers_height. 'split ' . wcmd
+    " exec "wincmd ="
     nnoremenu WinBar.Locals/Registers   :call neodebug#UpdateLocalsOrRegisters()<CR>
 endfunction
 
@@ -490,11 +516,31 @@ function! neodebug#GotoRegistersWindow()
     endif
     let neodbg_winnr = bufwinnr(g:neodbg_registers_name)
     let neodbg_winnr_local = bufwinnr(g:neodbg_locals_name)
+
+    let neodbg_winnr_stack = bufwinnr(g:neodbg_stackframes_name)
+    let neodbg_winnr_thread = bufwinnr(g:neodbg_threads_name)
+
+    let neodbg_winnr_break = bufwinnr(g:neodbg_breakpoints_name)
+
     if neodbg_winnr == -1
+
         if neodbg_winnr_local == -1
             " if multi-tab or the buffer is hidden
-            call neodebug#OpenRegisters()
+            if neodbg_winnr_stack != -1
+                call neodebug#GotoStackFramesWindow()
+                call neodebug#OpenRegistersWindow('h')
+            elseif neodbg_winnr_thread != -1
+                call neodebug#GotoThreadsWindow()
+                call neodebug#OpenRegistersWindow('h')
+            elseif neodbg_winnr_break != -1
+                call neodebug#GotoBreakpointsWindow()
+                call neodebug#OpenRegistersWindow('h')
+            else
+                call neodebug#OpenRegisters()
+            endif
+            exec "wincmd ="
             let neodbg_winnr = bufwinnr(g:neodbg_registers_name)
+
         else
             call neodebug#GotoLocalsWindow()
             let bufnum = bufnr(g:neodbg_registers_name)
@@ -526,14 +572,9 @@ function! neodebug#OpenStackFrames()
 endfunction
 
 " StackFrames window
-function! neodebug#OpenStackFramesWindow()
+function! neodebug#OpenStackFramesWindow(...)
+    let para = a:0>0 ? a:1 : 'v'
     " call NeoDebugGotoStartWin()
-
-    if s:neodbg_locals_opened == 0
-        call neodebug#OpenLocals()
-    endif
-
-    call  neodebug#GotoLocalsWindow()
 
     let bufnum = bufnr(g:neodbg_stackframes_name)
 
@@ -546,8 +587,13 @@ function! neodebug#OpenStackFramesWindow()
     endif
 
     " Create the tag explorer window
-    exe 'silent!  ' . g:neodbg_stackframes_height. 'split ' . wcmd
-    exec "wincmd ="
+    if para == 'v'
+        exe 'silent!  botright ' . g:neodbg_stackframes_width. 'vsplit ' . wcmd
+    elseif para == 'h'
+        exe 'silent!  ' . g:neodbg_stackframes_height. 'split ' . wcmd
+    endif
+    " exe 'silent!  ' . g:neodbg_stackframes_height. 'split ' . wcmd
+    " exec "wincmd ="
     nnoremenu WinBar.StackFrames/Threads   :call neodebug#UpdateStackOrThreads()<CR>
 endfunction
 
@@ -569,10 +615,28 @@ function! neodebug#GotoStackFramesWindow()
     let neodbg_winnr = bufwinnr(g:neodbg_stackframes_name)
     let neodbg_winnr_thread = bufwinnr(g:neodbg_threads_name)
 
+    let neodbg_winnr_register = bufwinnr(g:neodbg_registers_name)
+    let neodbg_winnr_local = bufwinnr(g:neodbg_locals_name)
+
+    let neodbg_winnr_break = bufwinnr(g:neodbg_breakpoints_name)
+
     if neodbg_winnr == -1
         if neodbg_winnr_thread == -1
             " if multi-tab or the buffer is hidden
-            call neodebug#OpenStackFrames()
+            if neodbg_winnr_local != -1
+                call neodebug#GotoLocalsWindow()
+                call neodebug#OpenStackFramesWindow('h')
+            elseif neodbg_winnr_register != -1
+                call neodebug#GotoRegistersWindow()
+                call neodebug#OpenStackFramesWindow('h')
+            elseif neodbg_winnr_break != -1
+                call neodebug#GotoBreakpointsWindow()
+                call neodebug#OpenStackFramesWindow('h')
+            else
+                call neodebug#OpenStackFrames()
+            endif
+
+            exec "wincmd ="
             let neodbg_winnr = bufwinnr(g:neodbg_stackframes_name)
         else
             call neodebug#GotoThreadsWindow()
@@ -628,11 +692,9 @@ function! neodebug#OpenThreads()
 
 endfunction
 " Threads window
-function! neodebug#OpenThreadsWindow()
-    if s:neodbg_locals_opened == 0
-        call neodebug#OpenLocals()
-    endif
-    call  neodebug#GotoLocalsWindow()
+function! neodebug#OpenThreadsWindow(...)
+    let para = a:0>0 ? a:1 : 'v'
+
     let bufnum = bufnr(g:neodbg_threads_name)
 
     if bufnum == -1
@@ -644,8 +706,13 @@ function! neodebug#OpenThreadsWindow()
     endif
 
     " Create the tag explorer window
-    exe 'silent!  ' . g:neodbg_threads_height. 'split ' . wcmd
-    exec "wincmd ="
+    if para == 'v'
+        exe 'silent!  botright ' . g:neodbg_threads_width. 'vsplit ' . wcmd
+    elseif para == 'h'
+        exe 'silent!  ' . g:neodbg_threads_height. 'split ' . wcmd
+    endif
+    " exe 'silent!  ' . g:neodbg_threads_height. 'split ' . wcmd
+    " exec "wincmd ="
     nnoremenu WinBar.StackFrames/Threads   :call neodebug#UpdateStackOrThreads()<CR>
 endfunction
 
@@ -666,11 +733,31 @@ function! neodebug#GotoThreadsWindow()
     endif
     let neodbg_winnr = bufwinnr(g:neodbg_threads_name)
     let neodbg_winnr_stack = bufwinnr(g:neodbg_stackframes_name)
+
+    let neodbg_winnr_register = bufwinnr(g:neodbg_registers_name)
+    let neodbg_winnr_local = bufwinnr(g:neodbg_locals_name)
+
+    let neodbg_winnr_break = bufwinnr(g:neodbg_breakpoints_name)
+
     if neodbg_winnr == -1
         if neodbg_winnr_stack == -1
             " if multi-tab or the buffer is hidden
-            call neodebug#OpenThreads()
+            if neodbg_winnr_local != -1
+                call neodebug#GotoLocalsWindow()
+                call neodebug#OpenThreadsWindow('h')
+            elseif neodbg_winnr_register != -1
+                call neodebug#GotoRegistersWindow()
+                call neodebug#OpenThreadsWindow('h')
+            elseif neodbg_winnr_break != -1
+                call neodebug#GotoBreakpointsWindow()
+                call neodebug#OpenThreadsWindow('h')
+            else
+                call neodebug#OpenThreads()
+            endif
+
+            exec "wincmd ="
             let neodbg_winnr = bufwinnr(g:neodbg_threads_name)
+
         else
             call neodebug#GotoStackFramesWindow()
             let bufnum = bufnr(g:neodbg_threads_name)
@@ -724,11 +811,8 @@ function! neodebug#OpenBreakpoints()
 
 endfunction
 " Breakpoints window
-function! neodebug#OpenBreakpointsWindow()
-    if s:neodbg_locals_opened == 0
-        call neodebug#OpenLocals()
-    endif
-    call  neodebug#GotoLocalsWindow()
+function! neodebug#OpenBreakpointsWindow(...)
+    let para = a:0>0 ? a:1 : 'v'
     let bufnum = bufnr(g:neodbg_breakpoints_name)
 
     if bufnum == -1
@@ -740,8 +824,13 @@ function! neodebug#OpenBreakpointsWindow()
     endif
 
     " Create the tag explorer window
-    exe 'silent!  ' . g:neodbg_breakpoints_height. 'split ' . wcmd
-    exec "wincmd ="
+    if para == 'v'
+        exe 'silent!  botright ' . g:neodbg_breakpoints_width. 'vsplit ' . wcmd
+    elseif para == 'h'
+        exe 'silent!  ' . g:neodbg_breakpoints_height. 'split ' . wcmd
+    endif
+    " exe 'silent!  ' . g:neodbg_breakpoints_height. 'split ' . wcmd
+    " exec "wincmd ="
     nnoremenu WinBar.Breakpoints   :call neodebug#UpdateBreakpointsWindow()<CR>
 endfunction
 
@@ -760,14 +849,37 @@ function! neodebug#GotoBreakpointsWindow()
     if bufname("%") == g:neodbg_breakpoints_name
         return
     endif
+
     let neodbg_winnr = bufwinnr(g:neodbg_breakpoints_name)
+
+    let neodbg_winnr_stack = bufwinnr(g:neodbg_stackframes_name)
+    let neodbg_winnr_thread = bufwinnr(g:neodbg_threads_name)
+
+    let neodbg_winnr_register = bufwinnr(g:neodbg_registers_name)
+    let neodbg_winnr_local = bufwinnr(g:neodbg_locals_name)
+
     if neodbg_winnr == -1
         " if multi-tab or the buffer is hidden
-        call neodebug#OpenBreakpoints()
-        let neodbg_winnr = bufwinnr(g:neodbg_breakpoints_name)
+            if neodbg_winnr_local != -1
+                call neodebug#GotoLocalsWindow()
+                call neodebug#OpenBreakpointsWindow('h')
+            elseif neodbg_winnr_register != -1
+                call neodebug#GotoRegistersWindow()
+                call neodebug#OpenBreakpointsWindow('h')
+            elseif neodbg_winnr_stack != -1
+                call neodebug#GotoStackFramesWindow()
+                call neodebug#OpenBreakpointsWindow('h')
+            elseif neodbg_winnr_thread != -1
+                call neodebug#GotoThreadsWindow()
+                call neodebug#OpenBreakpointsWindow('h')
+            else
+                call neodebug#OpenBreakpoints()
+            endif
+
+            exec "wincmd ="
+            let neodbg_winnr = bufwinnr(g:neodbg_breakpoints_name)
     endif
     exec neodbg_winnr . "wincmd w"
-    " call win_gotoid(g:neodbg_breakpoints_win)
 endf
 
 function! neodebug#UpdateLocalsWindow()
