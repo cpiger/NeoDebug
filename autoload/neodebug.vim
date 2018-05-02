@@ -370,7 +370,7 @@ function! neodebug#OpenLocalsWindow()
 
     " Create the tag explorer window
     exe 'silent!  botright ' . g:neodbg_locals_width. 'vsplit ' . wcmd
-    nnoremenu WinBar.Locals   :call neodebug#UpdateLocalsWindow()<CR>
+    nnoremenu WinBar.Locals/Registers   :call neodebug#UpdateLocalsOrRegisters()<CR>
 endfunction
 
 function neodebug#CloseLocalsWindow()
@@ -391,14 +391,120 @@ function! neodebug#GotoLocalsWindow()
         return
     endif
     let neodbg_winnr = bufwinnr(g:neodbg_locals_name)
+    let neodbg_winnr_register = bufwinnr(g:neodbg_registers_name)
+
     if neodbg_winnr == -1
-        " if multi-tab or the buffer is hidden
-        call neodebug#OpenLocals()
-        let neodbg_winnr = bufwinnr(g:neodbg_locals_name)
+        if neodbg_winnr_register == -1
+            " if multi-tab or the buffer is hidden
+            call neodebug#OpenLocals()
+            let neodbg_winnr = bufwinnr(g:neodbg_locals_name)
+        else
+            call neodebug#GotoRegistersWindow()
+            let bufnum = bufnr(g:neodbg_locals_name)
+            exec "b ". bufnum
+            let neodbg_winnr = bufwinnr(g:neodbg_locals_name)
+        endif
     endif
     exec neodbg_winnr . "wincmd w"
-    " call win_gotoid(g:neodbg_locals_win)
 endf
+
+function! neodebug#OpenRegisters()
+
+    call neodebug#OpenRegistersWindow()
+
+    setlocal buftype=nofile
+    setlocal complete=.
+    setlocal noswapfile
+    setlocal nowrap
+    setlocal nobuflisted
+    setlocal nonumber
+    setlocal winfixwidth
+    setlocal cursorline
+
+    setlocal foldcolumn=2
+    setlocal foldmarker={,}
+    setlocal foldmethod=marker
+
+    " highlight NeoDebugGoto guifg=Blue
+    hi def link NeoDebugKey Statement
+    hi def link NeoDebugHiLn Statement
+    hi def link NeoDebugGoto Underlined
+    hi def link NeoDebugPtr Underlined
+    hi def link NeoDebugFrame LineNr
+    hi def link NeoDebugCmd Macro
+    " syntax
+    syn keyword NeoDebugKey Function Breakpoint Catchpoint 
+    syn match NeoDebugFrame /\v^#\d+ .*/ contains=NeoDebugGoto
+    syn match NeoDebugGoto /\v<at [^()]+:\d+|file .+, line \d+/
+    syn match NeoDebugCmd /^(gdb).*/
+    syn match NeoDebugPtr /\v(^|\s+)\zs\$?\w+ \=.{-0,} 0x\w+/
+    " highlight the whole line for 
+    " returns for info threads | info break | finish | watchpoint
+    syn match NeoDebugHiLn /\v^\s*(Id\s+Target Id|Num\s+Type|Value returned is|(Old|New) value =|Hardware watchpoint).*$/
+
+    " syntax for perldb
+    syn match NeoDebugCmd /^\s*DB<.*/
+    "	syn match NeoDebugFrame /\v^#\d+ .*/ contains=NeoDebugGoto
+    syn match NeoDebugGoto /\v from file ['`].+' line \d+/
+    syn match NeoDebugGoto /\v at ([^ ]+) line (\d+)/
+    syn match NeoDebugGoto /\v at \(eval \d+\)..[^:]+:\d+/
+
+endfunction
+
+" Registers window
+function! neodebug#OpenRegistersWindow()
+    if s:neodbg_locals_opened == 0
+        call neodebug#OpenLocals()
+    endif
+    call  neodebug#GotoLocalsWindow()
+    let bufnum = bufnr(g:neodbg_threads_name)
+
+    if bufnum == -1
+        " Create a new buffer
+        let wcmd = g:neodbg_registers_name
+    else
+        " Edit the existing buffer
+        let wcmd = '+buffer' . bufnum
+    endif
+
+    " Create the tag explorer window
+    exe 'silent!  ' . g:neodbg_registers_height. 'split ' . wcmd
+    exec "wincmd ="
+    nnoremenu WinBar.Locals/Registers   :call neodebug#UpdateLocalsOrRegisters()<CR>
+endfunction
+
+function neodebug#CloseRegistersWindow()
+    let winnr = bufwinnr(g:neodbg_registers_name)
+    if winnr != -1
+        call neodebug#GotoRegistersWindow()
+        let s:neodbg_save_cursor = getpos(".")
+        close
+        return 1
+    endif
+    return 0
+endfunction
+
+function! neodebug#GotoRegistersWindow()
+    if bufname("%") == g:neodbg_registers_name
+        return
+    endif
+    let neodbg_winnr = bufwinnr(g:neodbg_registers_name)
+    let neodbg_winnr_local = bufwinnr(g:neodbg_locals_name)
+    if neodbg_winnr == -1
+        if neodbg_winnr_local == -1
+            " if multi-tab or the buffer is hidden
+            call neodebug#OpenRegisters()
+            let neodbg_winnr = bufwinnr(g:neodbg_registers_name)
+        else
+            call neodebug#GotoLocalsWindow()
+            let bufnum = bufnr(g:neodbg_registers_name)
+            exec "b ". bufnum
+            let neodbg_winnr = bufwinnr(g:neodbg_registers_name)
+        endif
+    endif
+    exec neodbg_winnr . "wincmd w"
+endf
+
 
 function! neodebug#OpenStackFrames()
 
@@ -670,6 +776,12 @@ function! neodebug#UpdateLocalsWindow()
     call NeoDebugSendCommand("info locals", 'u')
 endf
 
+function! neodebug#UpdateRegistersWindow()
+    call neodebug#GotoRegistersWindow()
+    silent exec '0,' . line("$") . 'd _'
+    call NeoDebugSendCommand("info registers", 'u')
+endf
+
 function! neodebug#UpdateStackFramesWindow()
     call neodebug#GotoStackFramesWindow()
     silent exec '0,' . line("$") . 'd _'
@@ -699,6 +811,20 @@ function! neodebug#UpdateStackOrThreads()
 
     if neodbg_winnr_stack == -1
         call neodebug#UpdateStackFramesWindow()
+    endif
+endfunction
+
+function! neodebug#UpdateLocalsOrRegisters()
+
+    let neodbg_winnr_register = bufwinnr(g:neodbg_registers_name)
+    let neodbg_winnr_local = bufwinnr(g:neodbg_locals_name)
+
+    if neodbg_winnr_register == -1
+        call neodebug#UpdateRegistersWindow()
+    endif
+
+    if neodbg_winnr_local == -1
+        call neodebug#UpdateLocalsWindow()
     endif
 endfunction
 " vim: set foldmethod=marker 

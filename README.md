@@ -36,9 +36,9 @@ Screenshot:
 ![threas](https://github.com/cpiger/NeoDebug/blob/master/NeoDebugInfoThreadsHit.png)
 
 
-5. info locals, breakpoints, threads, bt
+5. info locals, breakpoints, threads, bt, registers
 
-![info](https://github.com/cpiger/NeoDebug/blob/master/NeoDebugInfolstb.png)
+![info](https://github.com/cpiger/NeoDebug/blob/master/NeoDebugInfoSwitch.png)
 
 
 ## Installation
