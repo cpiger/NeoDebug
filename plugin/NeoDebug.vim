@@ -87,15 +87,15 @@ function! NeoDebug(cmd, ...)  " [mode]
         call neodebug#OpenStackFrames()
         let g:neodbg_stackframes_win = win_getid(winnr())
 
-        " call neodebug#OpenThreads()
-        " let g:neodbg_threads_win = win_getid(winnr())
+        call neodebug#OpenThreads()
+        let g:neodbg_threads_win = win_getid(winnr())
 
         call neodebug#OpenBreakpoints()
         let g:neodbg_breakpoints_win = win_getid(winnr())
 
 
         call neodebug#CloseBreakpointsWindow()
-        " call neodebug#CloseThreadsWindow()
+        call neodebug#CloseThreadsWindow()
         call neodebug#CloseStackFramesWindow()
         call neodebug#CloseLocalsWindow()
         call s:NeoDebugStart(usercmd)
@@ -258,7 +258,9 @@ func s:NeoDebugEnd(job, status)
     quit
     call neodebug#GotoBreakpointsWindow()
     quit
-    call neodebug#GotoStackOrThreadsWindow()
+    call neodebug#GotoThreadsWindow()
+    quit
+    call neodebug#GotoStackFramesWindow()
     quit
     call neodebug#GotoLocalsWindow()
     quit
@@ -336,11 +338,11 @@ func s:HandleOutput(chan, msg)
         endif
 
         if  "backtrace" == strpart(s:comm_msg, 2, strlen("backtrace"))
-            call neodebug#GotoStackOrThreadsWindow()
+            call neodebug#GotoStackFramesWindow()
         endif
 
         if  "info threads" == strpart(s:comm_msg, 2, strlen("info threads"))
-            call neodebug#GotoStackOrThreadsWindow()
+            call neodebug#GotoThreadsWindow()
         endif
 
         if "info breakpoints" == strpart(s:comm_msg, 2, strlen("info breakpoints"))
@@ -352,7 +354,7 @@ func s:HandleOutput(chan, msg)
             if updateinfo_line =~ '\\n"\_$'
                 " echomsg "s:appendfile:".s:appendline
                 let s:appendline = substitute(s:appendline, '\\n\|\\032\\032', '', 'g')
-                let s:appendline = substitute(s:appendline, '\\t', "\t\t\t", 'g')
+                let s:appendline = substitute(s:appendline, '\\t', "\t\t", 'g')
                 let s:appendline = substitute(s:appendline, '\\"', '"', 'g')
                 call append(line("$")-1, s:appendline)
                 let s:appendline = ''
@@ -399,6 +401,10 @@ func s:HandleOutput(chan, msg)
             call s:HandleNewBreakpoint(debugger_line)
         elseif debugger_line =~ '^=breakpoint-deleted,'
             call s:HandleBreakpointDelete(debugger_line)
+        elseif debugger_line =~ '^\(=thread-created,id=\|=thread-selected,id=\|=thread-exited,id=\)'
+            if s:neodbg_quiting == 0
+                call neodebug#UpdateThreadsWindow()
+            endif
         elseif debugger_line =~ '^\^done,value='
             call s:HandleEvaluate(debugger_line)
         elseif debugger_line =~ '^\^error,msg='
@@ -422,7 +428,7 @@ func s:HandleOutput(chan, msg)
             if debugger_line =~ '\\n"\_$'
                 " echomsg "s:appendfile:".s:appendline
                 let s:appendline = substitute(s:appendline, '\\n\|\\032\\032', '', 'g')
-                let s:appendline = substitute(s:appendline, '\\t', "\t\t\t", 'g')
+                let s:appendline = substitute(s:appendline, '\\t', "\t\t", 'g')
                 let s:appendline = substitute(s:appendline, '\\"', '"', 'g')
                 call append(line("$"), s:appendline)
                 let s:appendline = ''
@@ -712,6 +718,7 @@ func NeoDebugInstallCommandsHotkeys()
     noremap <buffer><silent> <ESC> :call neodebug#CloseConsoleWindow()<CR>
 
     inoremap <expr><buffer> <silent> <CR> pumvisible() ? "\<c-y><c-o>:call NeoDebug(getline('.'), 'i')<cr>" : "<c-o>:call NeoDebug(getline('.'), 'i')<cr>"
+    " inoremap <buffer> <silent> <C-CR> :<c-o>:call NeoDebug("", 'i')<cr>
     imap <buffer> <silent> <2-LeftMouse> <cr>
     imap <buffer> <silent> <kEnter> <cr>
 
@@ -865,14 +872,18 @@ func NeoDebugDeleteCommandsHotkeys()
 endfunc
 
 " :Next, :Continue, etc - send a command to debugger
+let s:neodbg_quiting = 0
 let s:neodbg_sendcmd_flag = 0
 " func NeoDebugSendCommand(cmd)
 function! NeoDebugSendCommand(cmd, ...)  " [mode]
     " echomsg "<GDB>cmd:[".a:cmd."]"
     let usercmd = a:cmd
+    if usercmd == 'q'
+        let  s:neodbg_quiting = 1
+    endif
     let mode = a:0>0 ? a:1 : ''
     let s:mode = mode
-    if usercmd != s:neodbg_cmd_historys[-1]
+    if usercmd != s:neodbg_cmd_historys[-1] && mode != 'u'
         if -1 == match(usercmd, '^complete') && -1 == match(usercmd, '^complete')
             call add(s:neodbg_cmd_historys, usercmd)
             if mode == 'n' && s:neodbg_init_flag == 0
@@ -1060,7 +1071,6 @@ func s:HandleCursor(msg)
     if a:msg =~ '\(\*stopped\)'
         call neodebug#UpdateLocalsWindow()
         call neodebug#UpdateStackFramesWindow()
-        call neodebug#UpdateThreadsWindow()
     endif
 
     if win_gotoid(s:startwin)
@@ -1246,11 +1256,11 @@ command! -nargs=* -complete=file NeoDebug :call NeoDebug(<q-args>)
 command! -nargs=* -complete=file NeoDebugStop :call NeoDebugStop(<q-args>)
 command!  OpenLocal :call neodebug#OpenLocalsWindow()
 command!  OpenStack :call neodebug#OpenStackFramesWindow()
-" command!  OpenThread :call neodebug#OpenThreadsWindow()
+command!  OpenThread :call neodebug#OpenThreadsWindow()
 command!  OpenBreak :call neodebug#OpenBreakpointsWindow()
 " command!  CloseLocal :call neodebug#CloseLocalsWindow()
 command!  CloseStack :call neodebug#CloseStackFramesWindow()
-" command!  CloseThread :call neodebug#CloseThreadsWindow()
+command!  CloseThread :call neodebug#CloseThreadsWindow()
 command!  CloseBreak :call neodebug#CloseBreakpointsWindow()
 
 " vim: set foldmethod=marker 
