@@ -242,6 +242,7 @@ func s:NeoDebugStart(cmd)
         au BufUnload * call s:BufferUnload()
         au VimLeavePre * call NeoDebugDeleteCommandsHotkeys()
     augroup END
+
 endfunc
 
 func s:NeoDebugEnd(job, status)
@@ -254,22 +255,22 @@ func s:NeoDebugEnd(job, status)
     sign unplace *
 
     " If neodebug console window is open then close it.
-    call neodebug#GotoConsoleWindow()
-    quit
     call neodebug#GotoBreakpointsWindow()
-    quit
-    call neodebug#GotoThreadsWindow()
     quit
     call neodebug#GotoStackFramesWindow()
     quit
+    call neodebug#GotoThreadsWindow()
+    quit
     call neodebug#GotoLocalsWindow()
     quit
+    call neodebug#GotoConsoleWindow()
+    quit
 
-    exe 'bwipe! ' . bufnr(g:neodbg_console_name)
     exe 'bwipe! ' . bufnr(g:neodbg_locals_name)
     exe 'bwipe! ' . bufnr(g:neodbg_stackframes_name)
     exe 'bwipe! ' . bufnr(g:neodbg_threads_name)
     exe 'bwipe! ' . bufnr(g:neodbg_breakpoints_name)
+    exe 'bwipe! ' . bufnr(g:neodbg_console_name)
 
     let curwinid = win_getid(winnr())
 
@@ -350,12 +351,13 @@ func s:HandleOutput(chan, msg)
         endif
 
         if updateinfo_line =~ '^\~"' 
+            let updateinfo_line = substitute(updateinfo_line, '\~"\\t', "\~\"\t\t", 'g')
+            let updateinfo_line = substitute(updateinfo_line, '\\"', '"', 'g')
+            let updateinfo_line = substitute(updateinfo_line, '\\\\', '\\', 'g')
             let s:appendline .= strpart(updateinfo_line, 2, strlen(updateinfo_line)-3)
             if updateinfo_line =~ '\\n"\_$'
                 " echomsg "s:appendfile:".s:appendline
                 let s:appendline = substitute(s:appendline, '\\n\|\\032\\032', '', 'g')
-                let s:appendline = substitute(s:appendline, '\\t', "\t\t", 'g')
-                let s:appendline = substitute(s:appendline, '\\"', '"', 'g')
                 call append(line("$")-1, s:appendline)
                 let s:appendline = ''
                 redraw
@@ -424,12 +426,13 @@ func s:HandleOutput(chan, msg)
             call append(line("$"), strpart(debugger_line, 2, strlen(debugger_line)-3))
             " elseif debugger_line =~ '^\~"\S\+' 
         elseif debugger_line =~ '^\~"' 
+            let debugger_line = substitute(debugger_line, '\~"\\t', "\~\"\t\t", 'g')
+            let debugger_line = substitute(debugger_line, '\\"', '"', 'g')
+            let debugger_line = substitute(debugger_line, '\\\\', '\\', 'g')
             let s:appendline .= strpart(debugger_line, 2, strlen(debugger_line)-3)
             if debugger_line =~ '\\n"\_$'
                 " echomsg "s:appendfile:".s:appendline
                 let s:appendline = substitute(s:appendline, '\\n\|\\032\\032', '', 'g')
-                let s:appendline = substitute(s:appendline, '\\t', "\t\t", 'g')
-                let s:appendline = substitute(s:appendline, '\\"', '"', 'g')
                 call append(line("$"), s:appendline)
                 let s:appendline = ''
             endif
@@ -920,8 +923,9 @@ endfunc
 
 " Handle a BufRead autocommand event: place any signs.
 func s:BufferRead()
-    " let fname = expand('<afile>:p')
-    let fname = fnamemodify(expand('<afile>:t'), ":p")
+    let fname = expand('<afile>:p')
+    " let fname = fnamemodify(expand('<afile>:t'), ":p")
+    echomsg "BufferRead:".fname
     for [nr, entry] in items(s:breakpoints)
         if entry['fname'] == fname
             call s:PlaceSign(nr, entry)
@@ -931,8 +935,9 @@ endfunc
 
 " Handle a BufUnload autocommand event: unplace any signs.
 func s:BufferUnload()
-    " let fname = expand('<afile>:p')
-    let fname = fnamemodify(expand('<afile>:t'), ":p")
+    let fname = expand('<afile>:p')
+    " let fname = fnamemodify(expand('<afile>:t'), ":p")
+    echomsg "BufferUnload:".fname
     for [nr, entry] in items(s:breakpoints)
         if entry['fname'] == fname
             let entry['placed'] = 0
@@ -1077,6 +1082,7 @@ func s:HandleCursor(msg)
         let fname = substitute(a:msg, '.*fullname="\([^"]*\)".*', '\1', '')
         " let fname = fnamemodify(fnamemodify(fname, ":t"), ":p")
         "fix mswin
+        " echomsg "HandleCursor:fname:".fname
         if -1 == match(fname, '\\\\')
             let fname = fname
         else
@@ -1137,6 +1143,7 @@ func s:HandleNewBreakpoint(msg)
     " echomsg "lnum:".lnum
 
     " fix mswin
+    " echomsg "HandleCursor:fname:".fname
     if -1 == match(fname, '\\\\')
         let fname = fname
     else
@@ -1254,10 +1261,10 @@ endfunction
 
 command! -nargs=* -complete=file NeoDebug :call NeoDebug(<q-args>)
 command! -nargs=* -complete=file NeoDebugStop :call NeoDebugStop(<q-args>)
-command!  OpenLocal :call neodebug#OpenLocalsWindow()
-command!  OpenStack :call neodebug#OpenStackFramesWindow()
-command!  OpenThread :call neodebug#OpenThreadsWindow()
-command!  OpenBreak :call neodebug#OpenBreakpointsWindow()
+command!  OpenLocal :call neodebug#OpenLocals()
+command!  OpenStack :call neodebug#OpenStackFrames()
+command!  OpenThread :call neodebug#OpenThreads()
+command!  OpenBreak :call neodebug#OpenBreakpoints()
 " command!  CloseLocal :call neodebug#CloseLocalsWindow()
 command!  CloseStack :call neodebug#CloseStackFramesWindow()
 command!  CloseThread :call neodebug#CloseThreadsWindow()

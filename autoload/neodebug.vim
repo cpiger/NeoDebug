@@ -357,9 +357,9 @@ endfunction
 let s:neodbg_locals_opened = 0
 function! neodebug#OpenLocalsWindow()
     " call NeoDebugGotoStartWin()
-    if s:neodbg_locals_opened == 1
-        return
-    endif
+    " if s:neodbg_locals_opened == 1
+        " return
+    " endif
     let s:neodbg_locals_opened = 1
     let bufnum = bufnr(g:neodbg_locals_name)
 
@@ -399,7 +399,7 @@ function! neodebug#GotoLocalsWindow()
     let neodbg_winnr = bufwinnr(g:neodbg_locals_name)
     if neodbg_winnr == -1
         " if multi-tab or the buffer is hidden
-        call neodebug#OpenLocalsWindow()
+        call neodebug#OpenLocals()
         let neodbg_winnr = bufwinnr(g:neodbg_locals_name)
     endif
     exec neodbg_winnr . "wincmd w"
@@ -434,11 +434,12 @@ function! neodebug#OpenStackFramesWindow()
         call neodebug#OpenLocals()
     endif
 
-    if s:neodbg_stackframes_opened == 1
-        return
-    endif
+    " if s:neodbg_stackframes_opened == 1
+        " return
+    " endif
     let s:neodbg_stackframes_opened = 1
     call  neodebug#GotoLocalsWindow()
+
     let bufnum = bufnr(g:neodbg_stackframes_name)
 
     if bufnum == -1
@@ -481,7 +482,7 @@ function! neodebug#GotoStackFramesWindow()
     if neodbg_winnr == -1
         if neodbg_winnr_thread == -1
             " if multi-tab or the buffer is hidden
-            call neodebug#OpenStackFramesWindow()
+            call neodebug#OpenStackFrames()
             let neodbg_winnr = bufwinnr(g:neodbg_stackframes_name)
         else
             call neodebug#GotoThreadsWindow()
@@ -543,9 +544,9 @@ function! neodebug#OpenThreadsWindow()
     if s:neodbg_locals_opened == 0
         call neodebug#OpenLocals()
     endif
-    if s:neodbg_threads_opened == 1
-        return
-    endif
+    " if s:neodbg_threads_opened == 1
+        " return
+    " endif
     let s:neodbg_threads_opened = 1
     call  neodebug#GotoLocalsWindow()
     let bufnum = bufnr(g:neodbg_threads_name)
@@ -590,7 +591,7 @@ function! neodebug#GotoThreadsWindow()
     if neodbg_winnr == -1
         if neodbg_winnr_stack == -1
             " if multi-tab or the buffer is hidden
-            call neodebug#OpenThreadsWindow()
+            call neodebug#OpenThreads()
             let neodbg_winnr = bufwinnr(g:neodbg_threads_name)
         else
             call neodebug#GotoStackFramesWindow()
@@ -652,9 +653,9 @@ function! neodebug#OpenBreakpointsWindow()
         call neodebug#OpenLocals()
     endif
     call  neodebug#GotoLocalsWindow()
-    if s:neodbg_breakpoints_opened == 1
-        return
-    endif
+    " if s:neodbg_breakpoints_opened == 1
+        " return
+    " endif
     let s:neodbg_breakpoints_opened = 1
     let bufnum = bufnr(g:neodbg_breakpoints_name)
 
@@ -696,7 +697,7 @@ function! neodebug#GotoBreakpointsWindow()
     let neodbg_winnr = bufwinnr(g:neodbg_breakpoints_name)
     if neodbg_winnr == -1
         " if multi-tab or the buffer is hidden
-        call neodebug#OpenBreakpointsWindow()
+        call neodebug#OpenBreakpoints()
         let neodbg_winnr = bufwinnr(g:neodbg_breakpoints_name)
     endif
     exec neodbg_winnr . "wincmd w"
