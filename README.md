@@ -12,33 +12,33 @@ and gdb output is redirected to this windows.
 Screenshot:
 1. Gdb command directly input and show result.
 
-![Screenshot](https://github.com/cpiger/NeoDebug/blob/master/NeoDebug1.png)
+![Screenshot](https://github.com/cpiger/NeoDebug/blob/master/doc/NeoDebug1.png)
 
 
 2. Vim Style complete.
 
-![Vim style complete](https://github.com/cpiger/NeoDebug/blob/master/NeoDebugComplete.png)
+![Vim style complete](https://github.com/cpiger/NeoDebug/blob/master/doc/NeoDebugComplete.png)
 
 
 3. BallonShow.
 
-![ballonshow](https://github.com/cpiger/NeoDebug/blob/master/NeoDebugBallonShow.png)
+![ballonshow](https://github.com/cpiger/NeoDebug/blob/master/doc/NeoDebugBallonShow.png)
 
 
 4. Breakpoints jump, threads, stack
 
-![info breakpoints](https://github.com/cpiger/NeoDebug/blob/master/NeoDebugInfoBreakpointsJump.png)
+![info breakpoints](https://github.com/cpiger/NeoDebug/blob/master/doc/NeoDebugInfoBreakpointsJump.png)
 
 
-![stack](https://github.com/cpiger/NeoDebug/blob/master/NeoDebugFrameEnter.png)
+![stack](https://github.com/cpiger/NeoDebug/blob/master/doc/NeoDebugFrameEnter.png)
 
 
-![threas](https://github.com/cpiger/NeoDebug/blob/master/NeoDebugInfoThreadsHit.png)
+![threas](https://github.com/cpiger/NeoDebug/blob/master/doc/NeoDebugInfoThreadsHit.png)
 
 
 5. info locals, breakpoints, threads, bt, registers
 
-![info](https://github.com/cpiger/NeoDebug/blob/master/NeoDebugInfoSwitch.png)
+![info](https://github.com/cpiger/NeoDebug/blob/master/doc/NeoDebugInfoSwitch.png)
 
 
 ## Installation
@@ -96,6 +96,16 @@ The following shortcuts is applied that is similar to MSVC:
 	\ju or <C-S-F10> - set next statement (tb and jump)
 	<C-P> 	- view variable under the cursor (.p)
     <TAB>   - trigger complete 
+
+
+Options:
+
+    let g:neodbg_console_height        = 15  " gdb console buffer hight, Default: 15
+    let g:neodbg_openbreaks_default    = 1   " Open breakpoints window, Default: 1
+    let g:neodbg_openstacks_default    = 0   " Open stackframes window, Default: 0
+    let g:neodbg_openthreads_default   = 0   " Open threads window, Default: 0
+    let g:neodbg_openlocals_default    = 1   " Open locals window, Default: 1
+    let g:neodbg_openregisters_default = 0   " Open registers window, Default: 0
 
 
 ## Thanks

@@ -24,6 +24,22 @@ if !exists('g:neodbg_enable_help')
     let g:neodbg_enable_help = 1
 endif
 
+if !exists('g:neodbg_openbreaks_default')
+    let g:neodbg_openbreaks_default    = 1
+endif
+if !exists('g:neodbg_openstacks_default')
+    let g:neodbg_openstacks_default    = 0
+endif
+if !exists('g:neodbg_openthreads_default')
+    let g:neodbg_openthreads_default   = 0
+endif
+if !exists('g:neodbg_openlocals_default')
+    let g:neodbg_openlocals_default    = 1
+endif
+if !exists('g:neodbg_openregisters_default')
+    let g:neodbg_openregisters_default = 0
+endif
+
 let g:neodbg_console_name = "__DebugConsole__"
 let g:neodbg_console_height = 15
 let g:neodbg_prompt = '(gdb) '
@@ -49,16 +65,14 @@ let g:neodbg_threads_width = 50
 let g:neodbg_threads_height = 10
 
 let g:neodbg_locals_win = 0
-
 let g:neodbg_stackframes_win = 0
-
 let g:neodbg_threads_win = 0
-
 let g:neodbg_breakpoints_win = 0
 
 
 let g:neodbg_chan = 0
 
+let s:neodbg_is_debugging = 0
 let s:neodbg_running = 0
 let s:neodbg_exrc = $HOME.'/neodbg_exrc'
 let s:neodbg_port = 30777 
@@ -151,7 +165,7 @@ function! NeoDebug(cmd, ...)  " [mode]
     " goto frame
     " #0  factor (n=1, r=0x22fe48) at factor/factor.c:4
     " #1  0x00000000004015e2 in main (argc=1, argv=0x5b3480) at sample.c:12
-    if s:MyMatch(usercmd, '\v^#(\d+)') " && s:debugging
+    if s:MyMatch(usercmd, '\v^#(\d+)')  && s:neodbg_is_debugging
         let usercmd = "frame " . s:match[1]
         call NeoDebugSendCommand(usercmd, 'n')
         return
@@ -161,7 +175,7 @@ function! NeoDebug(cmd, ...)  " [mode]
     " Id   Target Id         Frame 
     " 2    Thread 83608.0x14dd0 0x00000000773c22da in ntdll!RtlInitString () from C:\\windows\\SYSTEM32\tdll.dll
     " 1    Thread 83608.0x1535c factor (n=1, r=0x22fe48) at factor/factor.c:5
-    if s:MyMatch(usercmd, '\v^\s+(\d+)\s+Thread ') "&& s:debugging
+    if s:MyMatch(usercmd, '\v^\s+(\d+)\s+Thread ') && s:neodbg_is_debugging
         let usercmd = "-thread-select " . s:match[1]
         call NeoDebugSendCommand(usercmd, 'n')
         call NeoDebugSendCommand("bt", 'n')
@@ -182,6 +196,9 @@ function! NeoDebug(cmd, ...)  " [mode]
         return
     endif
 
+    if usercmd == 'c'
+        let usercmd = s:neodbg_is_debugging ? 'continue' : 'run'
+    endif
 
     call NeoDebugSendCommand(usercmd, mode)
 endf
@@ -449,6 +466,13 @@ func s:HandleOutput(chan, msg)
             call append(line("$"), strpart(debugger_line, 2, strlen(debugger_line)-3))
             " elseif debugger_line =~ '^\~"\S\+' 
         elseif debugger_line =~ '^\~"' 
+
+            if debugger_line =~ '^\~"\(Kill the program\|Program exited\|The program is not being run\|The program no longer exists\|Detaching from\|Inferior\)'
+                let s:neodbg_is_debugging = 0
+            elseif  debugger_line =~ '^\~"\(Starting program\|Attaching to\)'
+                let s:neodbg_is_debugging = 1
+            endif
+
             let debugger_line = substitute(debugger_line, '\~"\\t', "\~\"\t\t", 'g')
             let debugger_line = substitute(debugger_line, '\\"', '"', 'g')
             let debugger_line = substitute(debugger_line, '\\\\', '\\', 'g')
@@ -1099,12 +1123,18 @@ func s:HandleCursor(msg)
         let s:stopped = 0
     endif
     if a:msg =~ '\(\*stopped,reason="breakpoint-hit"\)'
-        call  neodebug#UpdateBreakpointsWindow()
+        if g:neodbg_openbreaks_default == 1
+            call  neodebug#UpdateBreakpointsWindow()
+        endif
     endif
 
     if a:msg =~ '\(\*stopped\)'
-        call neodebug#UpdateLocalsWindow()
-        call neodebug#UpdateStackFramesWindow()
+        if g:neodbg_openlocals_default == 1 || g:neodbg_openregisters_default == 1
+            call neodebug#UpdateLocalsWindow()
+        endif
+        if g:neodbg_openstacks_default == 1 || g:neodbg_openthreads_default == 1
+            call neodebug#UpdateStackFramesWindow()
+        endif
     endif
 
     if win_gotoid(s:startwin)
@@ -1205,7 +1235,9 @@ func s:HandleNewBreakpoint(msg)
     endif
     redraw
 
-    call neodebug#UpdateBreakpointsWindow()
+    if g:neodbg_openbreaks_default == 1
+        call neodebug#UpdateBreakpointsWindow()
+    endif
 endfunc
 
 " Handle deleting a breakpoint
@@ -1223,7 +1255,9 @@ func s:HandleBreakpointDelete(msg)
         endif
         unlet s:breakpoints[nr]
     endif
-    call neodebug#UpdateBreakpointsWindow()
+    if g:neodbg_openbreaks_default == 1
+        call neodebug#UpdateBreakpointsWindow()
+    endif
 endfunc
 
 " TODO 
@@ -1291,15 +1325,15 @@ endfunction
 command! -nargs=* -complete=file NeoDebug :call NeoDebug(<q-args>)
 command! -nargs=* -complete=file NeoDebugStop :call NeoDebugStop(<q-args>)
 command!  OpenLocals :call neodebug#UpdateLocalsWindow()
-command!  OpenRegisgers :call neodebug#UpdateRegistersWindow()
+command!  OpenRegisters :call neodebug#UpdateRegistersWindow()
 command!  OpenStacks :call neodebug#UpdateStackFramesWindow()
 command!  OpenThreads :call neodebug#UpdateThreadsWindow()
 command!  OpenBreaks :call neodebug#UpdateBreakpointsWindow()
 
-command!  CloseLocals :call neodebug#CloseLocalsWindow()
-command!  CloseRegisters :call neodebug#CloseRegistersWindow()
-command!  CloseStacks :call neodebug#CloseStackFramesWindow()
-command!  CloseThreads :call neodebug#CloseThreadsWindow()
-command!  CloseBreaks :call neodebug#CloseBreakpointsWindow()
+command!  CloseLocals :call neodebug#CloseLocals()
+command!  CloseRegisters :call neodebug#CloseRegisters()
+command!  CloseStacks :call neodebug#CloseStackFrames()
+command!  CloseThreads :call neodebug#CloseThreads()
+command!  CloseBreaks :call neodebug#CloseBreakpoints()
 
 " vim: set foldmethod=marker 

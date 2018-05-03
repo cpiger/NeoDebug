@@ -378,6 +378,11 @@ function! neodebug#OpenLocalsWindow(...)
     nnoremenu WinBar.Locals/Registers   :call neodebug#UpdateLocalsOrRegisters()<CR>
 endfunction
 
+function neodebug#CloseLocals()
+    let g:neodbg_openlocals_default = 0
+    call  neodebug#CloseLocalsWindow()
+endfunction
+
 function neodebug#CloseLocalsWindow()
     let winnr = bufwinnr(g:neodbg_locals_name)
     if winnr != -1
@@ -499,6 +504,10 @@ function! neodebug#OpenRegistersWindow(...)
     nnoremenu WinBar.Locals/Registers   :call neodebug#UpdateLocalsOrRegisters()<CR>
 endfunction
 
+function neodebug#CloseRegisters()
+    let g:neodbg_registers_default = 0
+    call neodebug#CloseRegistersWindow()
+endfunction
 function neodebug#CloseRegistersWindow()
     let winnr = bufwinnr(g:neodbg_registers_name)
     if winnr != -1
@@ -595,6 +604,11 @@ function! neodebug#OpenStackFramesWindow(...)
     " exe 'silent!  ' . g:neodbg_stackframes_height. 'split ' . wcmd
     " exec "wincmd ="
     nnoremenu WinBar.StackFrames/Threads   :call neodebug#UpdateStackOrThreads()<CR>
+endfunction
+
+function neodebug#CloseStackFrames()
+    let g:neodbg_openstacks_default = 0
+    call neodebug#CloseStackFramesWindow()
 endfunction
 
 function neodebug#CloseStackFramesWindow()
@@ -716,6 +730,10 @@ function! neodebug#OpenThreadsWindow(...)
     nnoremenu WinBar.StackFrames/Threads   :call neodebug#UpdateStackOrThreads()<CR>
 endfunction
 
+function neodebug#CloseThreads()
+    let g:neodbg_threads_default = 0
+    call neodebug#CloseThreadsWindow()
+endfunction
 function neodebug#CloseThreadsWindow()
     let winnr = bufwinnr(g:neodbg_threads_name)
     if winnr != -1
@@ -834,6 +852,10 @@ function! neodebug#OpenBreakpointsWindow(...)
     nnoremenu WinBar.Breakpoints   :call neodebug#UpdateBreakpointsWindow()<CR>
 endfunction
 
+function neodebug#CloseBreakpoints()
+    let g:neodbg_openbreaks_default = 0
+    call neodebug#CloseBreakpointsWindow()
+endfunction
 function neodebug#CloseBreakpointsWindow()
     let winnr = bufwinnr(g:neodbg_breakpoints_name)
     if winnr != -1
@@ -883,30 +905,35 @@ function! neodebug#GotoBreakpointsWindow()
 endf
 
 function! neodebug#UpdateLocalsWindow()
+    let g:neodbg_openlocals_default = 1
     call neodebug#GotoLocalsWindow()
     silent exec '0,' . line("$") . 'd _'
     call NeoDebugSendCommand("info locals", 'u')
 endf
 
 function! neodebug#UpdateRegistersWindow()
+    let g:neodbg_openregisters_default = 1
     call neodebug#GotoRegistersWindow()
     silent exec '0,' . line("$") . 'd _'
     call NeoDebugSendCommand("info registers", 'u')
 endf
 
 function! neodebug#UpdateStackFramesWindow()
+    let g:neodbg_openstacks_default = 1
     call neodebug#GotoStackFramesWindow()
     silent exec '0,' . line("$") . 'd _'
     call NeoDebugSendCommand("backtrace", 'u')
 endf
 
 function! neodebug#UpdateThreadsWindow()
+    let g:neodbg_openthreads_default = 1
     call neodebug#GotoThreadsWindow()
     silent exec '0,' . line("$") . 'd _'
     call NeoDebugSendCommand("info threads", 'u')
 endf
 
 function! neodebug#UpdateBreakpointsWindow()
+    let g:neodbg_openbreaks_default = 1
     call neodebug#GotoBreakpointsWindow()
     silent exec '0,' . line("$") . 'd _'
     call NeoDebugSendCommand("info breakpoints", 'u')
