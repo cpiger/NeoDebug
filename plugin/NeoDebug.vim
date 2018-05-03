@@ -17,7 +17,7 @@ if !exists('g:neodbg_ballonshow_with_print')
 endif
 
 if !exists('g:neodbg_debuginfo')
-    let g:neodbg_debuginfo = 1
+    let g:neodbg_debuginfo = 0
 endif
 
 if !exists('g:neodbg_enable_help')
