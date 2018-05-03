@@ -905,31 +905,31 @@ function! neodebug#GotoBreakpointsWindow()
 endf
 
 function! neodebug#UpdateLocals()
-    if g:neodbg_openlocals_default = 0
+    if g:neodbg_openlocals_default == 0
         return
     endif
     call neodebug#UpdateLocalsWindow()
 endf
 function! neodebug#UpdateRegisters()
-    if g:neodbg_openregisters_default = 0
+    if g:neodbg_openregisters_default == 0
         return
     endif
     call neodebug#UpdateRegistersWindow()
 endf
 function! neodebug#UpdateStackFrames()
-    if g:neodbg_openstacks_default = 0
+    if g:neodbg_openstacks_default == 0
         return
     endif
     call neodebug#UpdateStackFramesWindow()
 endf
 function! neodebug#UpdateThreads()
-    if g:neodbg_openthreads_default = 0
+    if g:neodbg_openthreads_default == 0
         return
     endif
     call neodebug#UpdateThreadsWindow()
 endf
 function! neodebug#UpdateBreakpoints()
-    if g:neodbg_openbreaks_default = 0
+    if g:neodbg_openbreaks_default == 0
         return
     endif
     call neodebug#UpdateBreakpointsWindow()
