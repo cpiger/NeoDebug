@@ -25,7 +25,7 @@ if !exists('g:neodbg_enable_help')
 endif
 
 if !exists('g:neodbg_openbreaks_default')
-    let g:neodbg_openbreaks_default    = 1
+    let g:neodbg_openbreaks_default    = 0
 endif
 if !exists('g:neodbg_openstacks_default')
     let g:neodbg_openstacks_default    = 0
@@ -46,23 +46,23 @@ let g:neodbg_prompt = '(gdb) '
 
 let g:neodbg_breakpoints_name = "__Breakpoints__"
 let g:neodbg_breakpoints_width = 50
-let g:neodbg_breakpoints_height = 10
+let g:neodbg_breakpoints_height = 25
 
 let g:neodbg_locals_name = "__Locals__"
 let g:neodbg_locals_width = 50
-let g:neodbg_locals_height = 10
+let g:neodbg_locals_height = 25
 
 let g:neodbg_registers_name = "__Registers__"
 let g:neodbg_registers_width = 50
-let g:neodbg_registers_height = 10
+let g:neodbg_registers_height = 25
 
 let g:neodbg_stackframes_name = "__Stack Frames__"
 let g:neodbg_stackframes_width = 50
-let g:neodbg_stackframes_height = 10
+let g:neodbg_stackframes_height = 25
 
 let g:neodbg_threads_name = "__Threads__"
 let g:neodbg_threads_width = 50
-let g:neodbg_threads_height = 10
+let g:neodbg_threads_height = 25
 
 let g:neodbg_locals_win = 0
 let g:neodbg_registers_win = 0
@@ -135,6 +135,9 @@ function! NeoDebug(cmd, ...)  " [mode]
 
         call neodebug#OpenConsole()
         let s:neodbg_console_win = win_getid(winnr())
+        "fix minibuf conflict
+        call neodebug#CloseConsoleWindow()
+        call neodebug#OpenConsoleWindow()
 
         let s:neodbg_quitted = 0
         let s:neodbg_running = 1
@@ -391,7 +394,7 @@ func s:HandleOutput(chan, msg)
                     let s:appendline = substitute(s:appendline, '\\n\|\\032\\032', '', 'g')
                     call append(line("$")-1, s:appendline)
                     let s:appendline = ''
-                    redraw
+                    redraw!
                 endif
             endif
             " exec "wincmd ="

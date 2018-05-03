@@ -82,7 +82,8 @@ function! neodebug#OpenConsole()
 
 endfunction
 " Get ready for communication
-function! neodebug#OpenConsoleWindow()
+function! neodebug#OpenConsoleWindow(...)
+    let para = a:0>0 ? a:1 : 'v'
     let bufnum = bufnr(g:neodbg_console_name)
 
     if bufnum == -1
@@ -94,7 +95,11 @@ function! neodebug#OpenConsoleWindow()
     endif
 
     " Create the tag explorer window
+    if para == 'v'
     exe 'silent!  botright ' . g:neodbg_console_height . 'split ' . wcmd
+    elseif para == 'h'
+        exe 'silent! bel ' . g:neodbg_console_height. 'split ' . wcmd
+    endif
     if line('$') <= 1 && g:neodbg_enable_help
         silent call append ( 0, s:help_text )
     endif
@@ -130,7 +135,7 @@ function! neodebug#GotoConsoleWindow()
     let neodbg_winnr = bufwinnr(g:neodbg_console_name)
     if neodbg_winnr == -1
         " if multi-tab or the buffer is hidden
-        call neodebug#OpenConsoleWindow()
+        call neodebug#OpenConsoleWindow('h')
         let neodbg_winnr = bufwinnr(g:neodbg_console_name)
     endif
     exec neodbg_winnr . "wincmd w"
@@ -324,6 +329,7 @@ function! neodebug#OpenLocals()
     setlocal cursorline
 
     setlocal foldcolumn=2
+    setlocal foldtext=NeoDebugFoldTextExpr()
     setlocal foldmarker={,}
     setlocal foldmethod=marker
 
@@ -424,7 +430,6 @@ function! neodebug#GotoLocalsWindow()
                 call neodebug#OpenLocals()
             endif
 
-            " exec "wincmd ="
             let neodbg_winnr = bufwinnr(g:neodbg_locals_name)
 
         else
@@ -435,6 +440,7 @@ function! neodebug#GotoLocalsWindow()
         endif
     endif
     exec neodbg_winnr . "wincmd w"
+    " exec "wincmd ="
 endf
 
 function! neodebug#OpenRegisters()
@@ -500,7 +506,6 @@ function! neodebug#OpenRegistersWindow(...)
         exe 'silent!  ' . g:neodbg_registers_height. 'split ' . wcmd
     endif
     " exe 'silent!  ' . g:neodbg_registers_height. 'split ' . wcmd
-    " exec "wincmd ="
     nnoremenu WinBar.Locals/Registers   :call neodebug#UpdateLocalsOrRegisters()<CR>
 endfunction
 
@@ -547,7 +552,6 @@ function! neodebug#GotoRegistersWindow()
             else
                 call neodebug#OpenRegisters()
             endif
-            " exec "wincmd ="
             let neodbg_winnr = bufwinnr(g:neodbg_registers_name)
 
         else
@@ -558,6 +562,7 @@ function! neodebug#GotoRegistersWindow()
         endif
     endif
     exec neodbg_winnr . "wincmd w"
+    " exec "wincmd ="
 endf
 
 
@@ -602,7 +607,6 @@ function! neodebug#OpenStackFramesWindow(...)
         exe 'silent!  ' . g:neodbg_stackframes_height. 'split ' . wcmd
     endif
     " exe 'silent!  ' . g:neodbg_stackframes_height. 'split ' . wcmd
-    " exec "wincmd ="
     nnoremenu WinBar.StackFrames/Threads   :call neodebug#UpdateStackOrThreads()<CR>
 endfunction
 
@@ -650,7 +654,6 @@ function! neodebug#GotoStackFramesWindow()
                 call neodebug#OpenStackFrames()
             endif
 
-            " exec "wincmd ="
             let neodbg_winnr = bufwinnr(g:neodbg_stackframes_name)
         else
             call neodebug#GotoThreadsWindow()
@@ -660,6 +663,7 @@ function! neodebug#GotoStackFramesWindow()
         endif
     endif
     exec neodbg_winnr . "wincmd w"
+    " exec "wincmd ="
 endf
 
 
@@ -726,7 +730,6 @@ function! neodebug#OpenThreadsWindow(...)
         exe 'silent!  ' . g:neodbg_threads_height. 'split ' . wcmd
     endif
     " exe 'silent!  ' . g:neodbg_threads_height. 'split ' . wcmd
-    " exec "wincmd ="
     nnoremenu WinBar.StackFrames/Threads   :call neodebug#UpdateStackOrThreads()<CR>
 endfunction
 
@@ -773,7 +776,6 @@ function! neodebug#GotoThreadsWindow()
                 call neodebug#OpenThreads()
             endif
 
-            " exec "wincmd ="
             let neodbg_winnr = bufwinnr(g:neodbg_threads_name)
 
         else
@@ -784,6 +786,7 @@ function! neodebug#GotoThreadsWindow()
         endif
     endif
     exec neodbg_winnr . "wincmd w"
+    " exec "wincmd ="
 endf
 
 function! neodebug#OpenBreakpoints()
@@ -848,7 +851,6 @@ function! neodebug#OpenBreakpointsWindow(...)
         exe 'silent!  ' . g:neodbg_breakpoints_height. 'split ' . wcmd
     endif
     " exe 'silent!  ' . g:neodbg_breakpoints_height. 'split ' . wcmd
-    " exec "wincmd ="
     nnoremenu WinBar.Breakpoints   :call neodebug#UpdateBreakpointsWindow()<CR>
 endfunction
 
@@ -898,7 +900,6 @@ function! neodebug#GotoBreakpointsWindow()
                 call neodebug#OpenBreakpoints()
             endif
 
-            " exec "wincmd ="
             let neodbg_winnr = bufwinnr(g:neodbg_breakpoints_name)
     endif
     exec neodbg_winnr . "wincmd w"
@@ -939,6 +940,7 @@ function! neodebug#UpdateLocalsWindow()
     let g:neodbg_openlocals_default = 1
     call neodebug#GotoLocalsWindow()
     silent exec '0,' . line("$") . 'd _'
+    redraw!
     call NeoDebugSendCommand("info locals", 'u')
 endf
 
@@ -946,6 +948,7 @@ function! neodebug#UpdateRegistersWindow()
     let g:neodbg_openregisters_default = 1
     call neodebug#GotoRegistersWindow()
     silent exec '0,' . line("$") . 'd _'
+    redraw!
     call NeoDebugSendCommand("info registers", 'u')
 endf
 
@@ -953,6 +956,7 @@ function! neodebug#UpdateStackFramesWindow()
     let g:neodbg_openstacks_default = 1
     call neodebug#GotoStackFramesWindow()
     silent exec '0,' . line("$") . 'd _'
+    redraw!
     call NeoDebugSendCommand("backtrace", 'u')
 endf
 
@@ -960,6 +964,7 @@ function! neodebug#UpdateThreadsWindow()
     let g:neodbg_openthreads_default = 1
     call neodebug#GotoThreadsWindow()
     silent exec '0,' . line("$") . 'd _'
+    redraw!
     call NeoDebugSendCommand("info threads", 'u')
 endf
 
@@ -967,6 +972,7 @@ function! neodebug#UpdateBreakpointsWindow()
     let g:neodbg_openbreaks_default = 1
     call neodebug#GotoBreakpointsWindow()
     silent exec '0,' . line("$") . 'd _'
+    redraw!
     call NeoDebugSendCommand("info breakpoints", 'u')
 endf
 
