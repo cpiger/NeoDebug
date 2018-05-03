@@ -358,6 +358,14 @@ function! neodebug#OpenLocals()
     syn match NeoDebugGoto /\v at ([^ ]+) line (\d+)/
     syn match NeoDebugGoto /\v at \(eval \d+\)..[^:]+:\d+/
 
+    noremap <buffer><silent> <ESC> :call neodebug#CloseLocals()<CR>
+    nnoremap <buffer> <silent> <CR> :call NeoDebug(getline('.'), 'n')<cr>
+    nmap <buffer> <silent> <2-LeftMouse> <cr>
+    imap <buffer> <silent> <2-LeftMouse> <cr>
+    imap <buffer> <silent> <kEnter> <cr>
+    imap <buffer> <silent> <LeftMouse> <Nop>
+    nmap <buffer> <silent> <kEnter> <cr>
+
 endfunction
 " Local window
 let s:neodbg_locals_opened = 0
@@ -484,6 +492,14 @@ function! neodebug#OpenRegisters()
     syn match NeoDebugGoto /\v at ([^ ]+) line (\d+)/
     syn match NeoDebugGoto /\v at \(eval \d+\)..[^:]+:\d+/
 
+    noremap <buffer><silent> <ESC> :call neodebug#CloseRegisters()<CR>
+    nnoremap <buffer> <silent> <CR> :call NeoDebug(getline('.'), 'n')<cr>
+    nmap <buffer> <silent> <2-LeftMouse> <cr>
+    imap <buffer> <silent> <2-LeftMouse> <cr>
+    imap <buffer> <silent> <kEnter> <cr>
+    imap <buffer> <silent> <LeftMouse> <Nop>
+    nmap <buffer> <silent> <kEnter> <cr>
+
 endfunction
 
 " Registers window
@@ -582,6 +598,39 @@ function! neodebug#OpenStackFrames()
     setlocal foldcolumn=2
     setlocal foldmarker={,}
     setlocal foldmethod=marker
+
+
+    " highlight NeoDebugGoto guifg=Blue
+    hi def link NeoDebugKey Statement
+    hi def link NeoDebugHiLn Statement
+    hi def link NeoDebugGoto Underlined
+    hi def link NeoDebugPtr Underlined
+    hi def link NeoDebugFrame LineNr
+    hi def link NeoDebugCmd Macro
+    " syntax
+    syn keyword NeoDebugKey Function Breakpoint Catchpoint 
+    syn match NeoDebugFrame /\v^#\d+ .*/ contains=NeoDebugGoto
+    syn match NeoDebugGoto /\v<at [^()]+:\d+|file .+, line \d+/
+    syn match NeoDebugCmd /^(gdb).*/
+    syn match NeoDebugPtr /\v(^|\s+)\zs\$?\w+ \=.{-0,} 0x\w+/
+    " highlight the whole line for 
+    " returns for info threads | info break | finish | watchpoint
+    syn match NeoDebugHiLn /\v^\s*(Id\s+Target Id|Num\s+Type|Value returned is|(Old|New) value =|Hardware watchpoint).*$/
+
+    " syntax for perldb
+    syn match NeoDebugCmd /^\s*DB<.*/
+    "	syn match NeoDebugFrame /\v^#\d+ .*/ contains=NeoDebugGoto
+    syn match NeoDebugGoto /\v from file ['`].+' line \d+/
+    syn match NeoDebugGoto /\v at ([^ ]+) line (\d+)/
+    syn match NeoDebugGoto /\v at \(eval \d+\)..[^:]+:\d+/
+
+    noremap <buffer><silent> <ESC> :call neodebug#CloseStackFrames()<CR>
+    nnoremap <buffer> <silent> <CR> :call NeoDebug(getline('.'), 'n')<cr>
+    nmap <buffer> <silent> <2-LeftMouse> <cr>
+    imap <buffer> <silent> <2-LeftMouse> <cr>
+    imap <buffer> <silent> <kEnter> <cr>
+    imap <buffer> <silent> <LeftMouse> <Nop>
+    nmap <buffer> <silent> <kEnter> <cr>
 
 endfunction
 
@@ -708,6 +757,15 @@ function! neodebug#OpenThreads()
     syn match NeoDebugGoto /\v at ([^ ]+) line (\d+)/
     syn match NeoDebugGoto /\v at \(eval \d+\)..[^:]+:\d+/
 
+    noremap <buffer><silent> <ESC> :call neodebug#CloseThreads()<CR>
+    nnoremap <buffer> <silent> <CR> :call NeoDebug(getline('.'), 'n')<cr>
+    nmap <buffer> <silent> <2-LeftMouse> <cr>
+    imap <buffer> <silent> <2-LeftMouse> <cr>
+    imap <buffer> <silent> <kEnter> <cr>
+    imap <buffer> <silent> <LeftMouse> <Nop>
+    nmap <buffer> <silent> <kEnter> <cr>
+
+
 endfunction
 " Threads window
 function! neodebug#OpenThreadsWindow(...)
@@ -829,6 +887,14 @@ function! neodebug#OpenBreakpoints()
     syn match NeoDebugGoto /\v from file ['`].+' line \d+/
     syn match NeoDebugGoto /\v at ([^ ]+) line (\d+)/
     syn match NeoDebugGoto /\v at \(eval \d+\)..[^:]+:\d+/
+
+    noremap <buffer><silent> <ESC> :call neodebug#CloseBreakpoints()<CR>
+    nnoremap <buffer> <silent> <CR> :call NeoDebug(getline('.'), 'n')<cr>
+    nmap <buffer> <silent> <2-LeftMouse> <cr>
+    imap <buffer> <silent> <2-LeftMouse> <cr>
+    imap <buffer> <silent> <kEnter> <cr>
+    imap <buffer> <silent> <LeftMouse> <Nop>
+    nmap <buffer> <silent> <kEnter> <cr>
 
 endfunction
 " Breakpoints window
