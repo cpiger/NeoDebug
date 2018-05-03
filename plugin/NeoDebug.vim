@@ -70,7 +70,7 @@ let g:neodbg_threads_win = 0
 let g:neodbg_breakpoints_win = 0
 
 
-let g:neodbg_chan = 0
+let s:neodbg_chan = 0
 
 let s:neodbg_is_debugging = 0
 let s:neodbg_running = 0
@@ -231,7 +231,7 @@ func s:NeoDebugStart(cmd)
                     \ 'exit_cb': function('s:NeoDebugEnd'),
                     \ })
 
-        let g:neodbg_chan = job_getchannel(s:commjob)  
+        let s:neodbg_chan = job_getchannel(s:commjob)  
         let commpty = job_info((s:commjob))['tty_out']
     endif
 
@@ -534,11 +534,11 @@ func! NeoDebugBalloonExpr()
     call s:SendEval(v:beval_text)
     let s:neodbg_balloonexpr_flag = 0
 
-    let output = ch_readraw(g:neodbg_chan)
+    let output = ch_readraw(s:neodbg_chan)
     let alloutput = ''
     while output != g:neodbg_prompt
         let alloutput .= output
-        let output = ch_readraw(g:neodbg_chan)
+        let output = ch_readraw(s:neodbg_chan)
     endw
 
     let value = substitute(alloutput, '.*value="\(.*\)"', '\1', '')
@@ -558,11 +558,11 @@ func! NeoDebugBalloonExpr()
         call s:SendEval('*' . s:evalexpr)
         let s:neodbg_balloonexpr_flag = 0
 
-        let output = ch_readraw(g:neodbg_chan)
+        let output = ch_readraw(s:neodbg_chan)
         let alloutput = ''
         while output != g:neodbg_prompt
             let alloutput .= output
-            let output = ch_readraw(g:neodbg_chan)
+            let output = ch_readraw(s:neodbg_chan)
         endw
 
         let value = substitute(alloutput, '.*value="\(.*\)"', '\1', '')
@@ -597,14 +597,14 @@ fun! NeoDebugComplete(findstart, base)
 
         call NeoDebugSendCommand(usercmd)
 
-        let output = ch_readraw(g:neodbg_chan)
+        let output = ch_readraw(s:neodbg_chan)
         let s:completers = []
         while output != g:neodbg_prompt
             if output =~ '\~"' 
                 let completer = strpart(output, 2, strlen(output)-5) 
                 call add(s:completers, completer)
             endif
-            let output = ch_readraw(g:neodbg_chan)
+            let output = ch_readraw(s:neodbg_chan)
         endw
 
         " locate the start of the word
@@ -1123,18 +1123,12 @@ func s:HandleCursor(msg)
         let s:stopped = 0
     endif
     if a:msg =~ '\(\*stopped,reason="breakpoint-hit"\)'
-        if g:neodbg_openbreaks_default == 1
-            call  neodebug#UpdateBreakpointsWindow()
-        endif
+        call  neodebug#UpdateBreakpoints()
     endif
 
     if a:msg =~ '\(\*stopped\)'
-        if g:neodbg_openlocals_default == 1 || g:neodbg_openregisters_default == 1
-            call neodebug#UpdateLocalsWindow()
-        endif
-        if g:neodbg_openstacks_default == 1 || g:neodbg_openthreads_default == 1
-            call neodebug#UpdateStackFramesWindow()
-        endif
+        call neodebug#UpdateLocals()
+        call neodebug#UpdateStackFrames()
     endif
 
     if win_gotoid(s:startwin)
@@ -1235,9 +1229,7 @@ func s:HandleNewBreakpoint(msg)
     endif
     redraw
 
-    if g:neodbg_openbreaks_default == 1
-        call neodebug#UpdateBreakpointsWindow()
-    endif
+        call neodebug#UpdateBreakpoints()
 endfunc
 
 " Handle deleting a breakpoint
@@ -1255,9 +1247,7 @@ func s:HandleBreakpointDelete(msg)
         endif
         unlet s:breakpoints[nr]
     endif
-    if g:neodbg_openbreaks_default == 1
-        call neodebug#UpdateBreakpointsWindow()
-    endif
+    call neodebug#UpdateBreakpoints()
 endfunc
 
 " TODO 

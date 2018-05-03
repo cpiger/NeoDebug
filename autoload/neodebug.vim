@@ -505,7 +505,7 @@ function! neodebug#OpenRegistersWindow(...)
 endfunction
 
 function neodebug#CloseRegisters()
-    let g:neodbg_registers_default = 0
+    let g:neodbg_openregisters_default = 0
     call neodebug#CloseRegistersWindow()
 endfunction
 function neodebug#CloseRegistersWindow()
@@ -731,7 +731,7 @@ function! neodebug#OpenThreadsWindow(...)
 endfunction
 
 function neodebug#CloseThreads()
-    let g:neodbg_threads_default = 0
+    let g:neodbg_openthreads_default = 0
     call neodebug#CloseThreadsWindow()
 endfunction
 function neodebug#CloseThreadsWindow()
@@ -902,6 +902,37 @@ function! neodebug#GotoBreakpointsWindow()
             let neodbg_winnr = bufwinnr(g:neodbg_breakpoints_name)
     endif
     exec neodbg_winnr . "wincmd w"
+endf
+
+function! neodebug#UpdateLocals()
+    if g:neodbg_openlocals_default = 0
+        return
+    endif
+    call neodebug#UpdateLocalsWindow()
+endf
+function! neodebug#UpdateRegisters()
+    if g:neodbg_openregisters_default = 0
+        return
+    endif
+    call neodebug#UpdateRegistersWindow()
+endf
+function! neodebug#UpdateStackFrames()
+    if g:neodbg_openstacks_default = 0
+        return
+    endif
+    call neodebug#UpdateStackFramesWindow()
+endf
+function! neodebug#UpdateThreads()
+    if g:neodbg_openthreads_default = 0
+        return
+    endif
+    call neodebug#UpdateThreadsWindow()
+endf
+function! neodebug#UpdateBreakpoints()
+    if g:neodbg_openbreaks_default = 0
+        return
+    endif
+    call neodebug#UpdateBreakpointsWindow()
 endf
 
 function! neodebug#UpdateLocalsWindow()
