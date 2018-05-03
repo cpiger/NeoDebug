@@ -135,7 +135,7 @@ function! neodebug#GotoConsoleWindow()
     let neodbg_winnr = bufwinnr(g:neodbg_console_name)
     if neodbg_winnr == -1
         " if multi-tab or the buffer is hidden
-        call neodebug#OpenConsoleWindow('h')
+        call neodebug#OpenConsoleWindow('v')
         let neodbg_winnr = bufwinnr(g:neodbg_console_name)
     endif
     exec neodbg_winnr . "wincmd w"
@@ -1006,7 +1006,6 @@ function! neodebug#UpdateLocalsWindow()
     let g:neodbg_openlocals_default = 1
     call neodebug#GotoLocalsWindow()
     silent exec '0,' . line("$") . 'd _'
-    redraw!
     call NeoDebugSendCommand("info locals", 'u')
 endf
 
@@ -1014,7 +1013,6 @@ function! neodebug#UpdateRegistersWindow()
     let g:neodbg_openregisters_default = 1
     call neodebug#GotoRegistersWindow()
     silent exec '0,' . line("$") . 'd _'
-    redraw!
     call NeoDebugSendCommand("info registers", 'u')
 endf
 
@@ -1022,7 +1020,6 @@ function! neodebug#UpdateStackFramesWindow()
     let g:neodbg_openstacks_default = 1
     call neodebug#GotoStackFramesWindow()
     silent exec '0,' . line("$") . 'd _'
-    redraw!
     call NeoDebugSendCommand("backtrace", 'u')
 endf
 
@@ -1030,7 +1027,6 @@ function! neodebug#UpdateThreadsWindow()
     let g:neodbg_openthreads_default = 1
     call neodebug#GotoThreadsWindow()
     silent exec '0,' . line("$") . 'd _'
-    redraw!
     call NeoDebugSendCommand("info threads", 'u')
 endf
 
@@ -1038,7 +1034,6 @@ function! neodebug#UpdateBreakpointsWindow()
     let g:neodbg_openbreaks_default = 1
     call neodebug#GotoBreakpointsWindow()
     silent exec '0,' . line("$") . 'd _'
-    redraw!
     call NeoDebugSendCommand("info breakpoints", 'u')
 endf
 

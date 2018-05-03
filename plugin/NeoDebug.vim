@@ -1,7 +1,7 @@
 """""""""""""""""""""""""""""""""""""""""""""""""""""""
 " NeoDebug - Vim plugin for interface to gdb from Vim 
 " Maintainer: scott (cpiger@qq.com)
-"
+" Version: 0.1 2018-05-03  ready to use.
 """""""""""""""""""""""""""""""""""""""""""""""""""""""
 " In case this gets loaded twice.
 if exists(':NeoDebug')
@@ -394,7 +394,7 @@ func s:HandleOutput(chan, msg)
                     let s:appendline = substitute(s:appendline, '\\n\|\\032\\032', '', 'g')
                     call append(line("$")-1, s:appendline)
                     let s:appendline = ''
-                    redraw!
+                    " redraw!
                 endif
             endif
             " exec "wincmd ="
