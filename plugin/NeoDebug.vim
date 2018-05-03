@@ -65,6 +65,7 @@ let g:neodbg_threads_width = 50
 let g:neodbg_threads_height = 10
 
 let g:neodbg_locals_win = 0
+let g:neodbg_registers_win = 0
 let g:neodbg_stackframes_win = 0
 let g:neodbg_threads_win = 0
 let g:neodbg_breakpoints_win = 0
@@ -154,9 +155,6 @@ function! NeoDebug(cmd, ...)  " [mode]
     " echomsg "usercmd[".usercmd."]"
     if g:neodbg_debugger == 'gdb' && usercmd =~ '^\s*(gdb)' 
         let usercmd = substitute(usercmd, '^\s*(gdb)\s*', '', '')
-        if usercmd == ''
-            let usercmd = s:neodbg_cmd_historys[-1]
-        endif
     elseif g:neodbg_debugger == 'gdb' && usercmd =~ '^\s*>\s*' 
         let usercmd = substitute(usercmd, '^\s*>\s*', '', '')
         " echomsg "usercmd2[".usercmd."]"
@@ -167,7 +165,7 @@ function! NeoDebug(cmd, ...)  " [mode]
     " #1  0x00000000004015e2 in main (argc=1, argv=0x5b3480) at sample.c:12
     if s:MyMatch(usercmd, '\v^#(\d+)')  && s:neodbg_is_debugging
         let usercmd = "frame " . s:match[1]
-        call NeoDebugSendCommand(usercmd, 'n')
+        call NeoDebugSendCommand(usercmd)
         return
     endif
 
@@ -177,8 +175,8 @@ function! NeoDebug(cmd, ...)  " [mode]
     " 1    Thread 83608.0x1535c factor (n=1, r=0x22fe48) at factor/factor.c:5
     if s:MyMatch(usercmd, '\v^\s+(\d+)\s+Thread ') && s:neodbg_is_debugging
         let usercmd = "-thread-select " . s:match[1]
-        call NeoDebugSendCommand(usercmd, 'n')
-        call NeoDebugSendCommand("bt", 'n')
+        call NeoDebugSendCommand(usercmd)
+        call NeoDebugSendCommand("bt")
         return
     endif
 
@@ -396,9 +394,12 @@ func s:HandleOutput(chan, msg)
                     redraw
                 endif
             endif
-            exec "wincmd ="
+            " exec "wincmd ="
         endif
-        call neodebug#GotoConsoleWindow()
+        " echomsg "updateinfo_line::".updateinfo_line
+        if updateinfo_line == g:neodbg_prompt
+            call neodebug#GotoConsoleWindow()
+        endif
     endif
 
 
@@ -510,9 +511,9 @@ func s:HandleOutput(chan, msg)
             stopi
         endif
 
+        call win_gotoid(cur_wid)
     endif
 
-    call win_gotoid(cur_wid)
 
 endfunc
 
@@ -673,7 +674,7 @@ function! NeoDebugExpandPointerExpr()
             let cmd = s:match[1] . '.' . cmd
         endif
     endwhile 
-    call NeoDebugSendCommand("p *" . cmd, 'n')
+    call NeoDebugSendCommand("p *" . cmd)
     if foldlevel('.') > 0
         " goto beginning of the fold and close it
         normal [zzc
@@ -688,12 +689,12 @@ func NeoDebugInstallCommandsHotkeys()
 
     command Break call s:SetBreakpoint()
     command Clear call s:ClearBreakpoint()
-    command Step call NeoDebugSendCommand('-exec-step', 'n')
-    command Over call NeoDebugSendCommand('-exec-next', 'n')
-    command Finish call NeoDebugSendCommand('-exec-finish', 'n')
+    command Step call NeoDebugSendCommand('-exec-step')
+    command Over call NeoDebugSendCommand('-exec-next')
+    command Finish call NeoDebugSendCommand('-exec-finish')
     command -nargs=* Run call s:Run(<q-args>)
-    command -nargs=* Arguments call NeoDebugSendCommand('-exec-arguments ' . <q-args>, 'n')
-    command Stop call NeoDebugSendCommand('-exec-interrupt', 'n')
+    command -nargs=* Arguments call NeoDebugSendCommand('-exec-arguments ' . <q-args>)
+    command Stop call NeoDebugSendCommand('-exec-interrupt')
     command Continue call NeoDebugSendCommand('-exec-continue')
     command -range -nargs=* Evaluate call s:Evaluate(<range>, <q-args>)
     command Winbar call NeoDebugInstallWinbar()
@@ -797,7 +798,6 @@ func NeoDebugInstallCommandsHotkeys()
     nmap <silent> <F10>   :NeoDebug n<cr>
     nmap <silent> <F11>   :NeoDebug s<cr>
     nmap <silent> <S-F11> :NeoDebug finish<cr>
-    nmap <silent> <c-q> :NeoDebug q<cr>
     nmap <silent> <c-c> :NeoDebugStop<cr>
 
     map! <silent> <F5>    <c-o>:NeoDebug c<cr>
@@ -805,7 +805,6 @@ func NeoDebugInstallCommandsHotkeys()
     map! <silent> <F10>   <c-o>:NeoDebug n<cr>
     map! <silent> <F11>   <c-o>:NeoDebug s<cr>
     map! <silent> <S-F11> <c-o>:NeoDebug finish<cr>
-    map! <silent> <c-q>   <c-o>:NeoDebug q<cr>
 
     amenu NeoDebug.Run/Continue<tab>F5 					:NeoDebug c<CR>
     amenu NeoDebug.Step\ into<tab>F11					:NeoDebug s<CR>
@@ -930,24 +929,29 @@ function! NeoDebugSendCommand(cmd, ...)  " [mode]
     let usercmd = a:cmd
     let mode = a:0>0 ? a:1 : ''
     let s:mode = mode
-    if  mode == 'u'
+
+    if  mode == 'u'  ||  -1 != match(usercmd, '^complete')
+        " echomsg "<GDB1>:[".usercmd."][mode:".mode."]"
         let s:neodbg_sendcmd_flag = 0
     else
-        if usercmd != s:neodbg_cmd_historys[-1]
-            if -1 == match(usercmd, '^complete') && -1 == match(usercmd, '^complete')
-                call add(s:neodbg_cmd_historys, usercmd)
-                if mode == 'n' && s:neodbg_init_flag == 0
-                    " echomsg "<GDB1>:[".usercmd."][mode:".mode."]"
-                    let s:neodbg_sendcmd_flag = 1
-                endif
-            endif
-        else
-            if s:neodbg_balloonexpr_flag == 0 && -1 == match(usercmd, '^set pagination off')
-                " echomsg "<GDB2>:[".usercmd."][mode:".mode."]"
-                let s:neodbg_sendcmd_flag = 1
-            endif
+        if usercmd != s:neodbg_cmd_historys[-1] && usercmd != ''
+            " echomsg "<GDB2>:[".usercmd."][mode:".mode."]"
+            call add(s:neodbg_cmd_historys, usercmd)
         endif
+
+        if mode == '' && s:neodbg_init_flag == 0
+            let s:neodbg_sendcmd_flag = 1
+        endif
+
+        if usercmd == '' && mode == 'i'
+            let usercmd = s:neodbg_cmd_historys[-1]
+            let s:neodbg_sendcmd_flag = 1
+        elseif usercmd == s:neodbg_cmd_historys[-1] && mode == 'i'
+            let s:neodbg_sendcmd_flag = 0
+        endif
+
     endif
+
 
     if g:neodbg_debuginfo == 1
         silent echohl ModeMsg
@@ -965,7 +969,7 @@ func s:SendKey(key)
 endfunc
 
 func s:SendEval(expr)
-    call NeoDebugSendCommand('-data-evaluate-expression "' . a:expr . '"', 'n')
+    call NeoDebugSendCommand('-data-evaluate-expression "' . a:expr . '"')
     let s:evalexpr = a:expr
 endfunc
 
@@ -1011,7 +1015,7 @@ func s:SetBreakpoint()
     " call NeoDebugSendCommand('-break-insert '
     " \ . fnameescape(expand('%:p')) . ':' . line('.'))
     call NeoDebugSendCommand('break '
-                \ . fnameescape(expand('%:p')) . ':' . line('.'), 'n')
+                \ . fnameescape(expand('%:p')) . ':' . line('.'))
     if do_continue
         call NeoDebugSendCommand('-exec-continue')
     endif
@@ -1025,7 +1029,7 @@ func s:ClearBreakpoint()
     for [key, val] in items(s:breakpoints)
         if val['fname'] == fname && val['lnum'] == lnum
             " echomsg "val[fname]:lnum".val['fname'].":".val['lnum'].":".key
-            call NeoDebugSendCommand('delete ' . key, 'n')
+            call NeoDebugSendCommand('delete ' . key)
             " call ch_sendraw(s:commjob, '-break-delete ' . key . "\n")
             " call ch_sendraw(s:commjob, '-break-disable ' . key . "\n")
             " Assume this always wors, the reply is simply "^done".
@@ -1046,7 +1050,7 @@ func s:ToggleBreakpoint()
         if val['fname'] == fname && val['lnum'] == lnum
             " echomsg "val[fname]:lnum".val['fname'].":".val['lnum'].":".key
             " call ch_sendraw(s:commjob, 'delete ' . key . "\n")
-            call NeoDebugSendCommand('delete ' . key, 'n')
+            call NeoDebugSendCommand('delete ' . key)
             " Assume this always wors, the reply is simply "^done".
             exe 'sign unplace ' . (s:break_id + key)
             unlet s:breakpoints[key]
@@ -1058,9 +1062,9 @@ endfunc
 
 func s:Run(args)
     if a:args != ''
-        call NeoDebugSendCommand('-exec-arguments ' . a:args, 'n')
+        call NeoDebugSendCommand('-exec-arguments ' . a:args)
     endif
-    call NeoDebugSendCommand('-exec-run', 'n')
+    call NeoDebugSendCommand('-exec-run')
 endfunc
 
 func s:Evaluate(range, arg)

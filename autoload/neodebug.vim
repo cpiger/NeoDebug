@@ -424,7 +424,7 @@ function! neodebug#GotoLocalsWindow()
                 call neodebug#OpenLocals()
             endif
 
-            exec "wincmd ="
+            " exec "wincmd ="
             let neodbg_winnr = bufwinnr(g:neodbg_locals_name)
 
         else
@@ -547,7 +547,7 @@ function! neodebug#GotoRegistersWindow()
             else
                 call neodebug#OpenRegisters()
             endif
-            exec "wincmd ="
+            " exec "wincmd ="
             let neodbg_winnr = bufwinnr(g:neodbg_registers_name)
 
         else
@@ -650,7 +650,7 @@ function! neodebug#GotoStackFramesWindow()
                 call neodebug#OpenStackFrames()
             endif
 
-            exec "wincmd ="
+            " exec "wincmd ="
             let neodbg_winnr = bufwinnr(g:neodbg_stackframes_name)
         else
             call neodebug#GotoThreadsWindow()
@@ -773,7 +773,7 @@ function! neodebug#GotoThreadsWindow()
                 call neodebug#OpenThreads()
             endif
 
-            exec "wincmd ="
+            " exec "wincmd ="
             let neodbg_winnr = bufwinnr(g:neodbg_threads_name)
 
         else
@@ -898,7 +898,7 @@ function! neodebug#GotoBreakpointsWindow()
                 call neodebug#OpenBreakpoints()
             endif
 
-            exec "wincmd ="
+            " exec "wincmd ="
             let neodbg_winnr = bufwinnr(g:neodbg_breakpoints_name)
     endif
     exec neodbg_winnr . "wincmd w"
