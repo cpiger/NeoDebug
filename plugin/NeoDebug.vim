@@ -810,13 +810,9 @@ func NeoDebugInstallCommandsHotkeys()
 
     inoremap <expr><buffer> <silent> <CR> pumvisible() ? "\<c-y><c-o>:call NeoDebug(getline('.'), 'i')<cr>" : "<c-o>:call NeoDebug(getline('.'), 'i')<cr>"
     " inoremap <buffer> <silent> <C-CR> :<c-o>:call NeoDebug("", 'i')<cr>
-    imap <buffer> <silent> <2-LeftMouse> <cr>
-    imap <buffer> <silent> <kEnter> <cr>
 
     nnoremap <buffer> <silent> <CR> :call NeoDebug(getline('.'), 'n')<cr>
     nmap <buffer> <silent> <2-LeftMouse> <cr>
-    imap <buffer> <silent> <LeftMouse> <Nop>
-    nmap <buffer> <silent> <kEnter> <cr>
 
     nmap <silent> <F9>	         :call <SID>ToggleBreakpoint()<CR>
     map! <silent> <F9>	         <c-o>:call <SID>ToggleBreakpoint()<CR>
