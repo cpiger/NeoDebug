@@ -79,7 +79,11 @@ function! neodebug#OpenConsole()
 
     starti!
     " call cursor(0, 7)
-    setl completefunc=NeoDebugComplete
+    if has('nvim')
+        "not implement
+    else
+        setl completefunc=NeoDebugComplete
+    endif
 
 endfunction
 " Get ready for communication

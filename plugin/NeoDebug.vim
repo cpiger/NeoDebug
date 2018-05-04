@@ -133,7 +133,12 @@ function! NeoDebug(cmd, ...)  " [mode]
         endif
         exec 'mk! ' . s:neodbg_exrc . s:neodbg_port
         let sed_cmd = 'sed -i "/^set /d" ' . s:neodbg_exrc . s:neodbg_port
-        call  job_start(sed_cmd)
+
+        if has('nvim')
+            call jobstart(sed_cmd)
+        else
+            call job_start(sed_cmd)
+        endif
 
         set nocursorline
         set nocursorcolumn
@@ -222,7 +227,11 @@ function! NeoDebugStop(cmd)
 	if !s:neodbg_running
 		return
 	endif
-    call job_stop(s:commjob)
+    if has('nvim')
+        call jobstop(s:nvim_commjob)
+    else
+        call job_stop(s:commjob)
+    endif
 endfunction
 
 let s:neodbg_init_flag = 0
@@ -243,7 +252,15 @@ func s:NeoDebugStart(cmd)
 
     let cmd = [g:neodbg_debugger, '-quiet','-q', '-f', '--interpreter=mi2', a:cmd]
     " Create a hidden terminal window to communicate with gdb
-    if 1
+    if has('nvim')
+        let opts = {
+                    \ 'on_stdout': function('s:NvimHandleOutput'),
+                    \ 'on_exit': function('s:NvimNeoDebugEnd'),
+                    \ }
+
+        let s:nvim_commjob = jobstart(cmd, opts)
+
+    else
         let s:commjob = job_start(cmd, {
                     \ 'out_cb' : function('s:HandleOutput'),
                     \ 'exit_cb': function('s:NeoDebugEnd'),
@@ -252,6 +269,7 @@ func s:NeoDebugStart(cmd)
         let s:neodbg_chan = job_getchannel(s:commjob)  
         let commpty = job_info((s:commjob))['tty_out']
     endif
+
 
     " Interpret commands while the target is running.  This should usualy only be
     " exec-interrupt, since many commands don't work properly while the target is
@@ -288,6 +306,10 @@ func s:NeoDebugStart(cmd)
     augroup END
 
 endfunc
+
+func s:NvimNeoDebugEnd(job_id, data, event_type) abort
+    call s:NeoDebugEnd(a:job_id, a:event_type)
+endfunction
 
 func s:NeoDebugEnd(job, status)
 
@@ -342,6 +364,13 @@ func s:NeoDebugEnd(job, status)
 
     au! NeoDebugAutoCMD
 endfunc
+
+function! s:NvimHandleOutput(id, data, event)
+    for msg in a:data
+        call s:HandleOutput(a:id, substitute(msg, '\r','', 'g'))
+    endfor
+endfunction
+
 
 let s:updateinfo_skip_flag = 0
 let s:completer_skip_flag = 0
@@ -1054,14 +1083,22 @@ function! NeoDebugSendCommand(cmd, ...)  " [mode]
         silent echohl None
     endif
     let s:usercmd = usercmd
-    call ch_sendraw(s:commjob, usercmd . "\n")
+    if has('nvim')
+        call jobsend(s:nvim_commjob, usercmd . "\n")
+    else
+        call ch_sendraw(s:commjob, usercmd . "\n")
+    endif
     if usercmd == 'q'
         let  s:neodbg_quitted = 1
     endif
 endfunc
 
 func s:SendKey(key)
-    call ch_sendraw(s:commjob, a:key)
+    if has('nvim')
+        call jobsend(s:nvim_commjob, a:key)
+    else
+        call ch_sendraw(s:commjob, a:key)
+    endif
 endfunc
 
 func s:SendEval(expr)
