@@ -88,6 +88,7 @@ The following shortcuts is applied that is similar to MSVC:
 
 	<F5> 	- run or continue
 	<S-F5> 	- stop debugging (kill)
+    <F6> 	- toggle console window
 	<F10> 	- next
 	<F11> 	- step into
 	<S-F11> - step out (finish)

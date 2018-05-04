@@ -22,6 +22,7 @@ function s:UpdateHelpText()
         let s:help_text = [
             \ '<F5> 	- run or continue (c)',
             \ '<S-F5> 	- stop debugging (kill)',
+            \ '<F6> 	- toggle console window',
             \ '<F10> 	- next',
             \ '<F11> 	- step into',
             \ '<S-F11>  - step out (finish)',
@@ -106,11 +107,16 @@ function! neodebug#OpenConsoleWindow(...)
     call NeoDebugInstallWinbar()
 endfunction
 
+function neodebug#CloseConsole()
+    " let g:neodbg_openconsole_default = 0
+    call neodebug#CloseConsoleWindow()
+endfunction
+
 function neodebug#CloseConsoleWindow()
     let winnr = bufwinnr(g:neodbg_console_name)
     if winnr != -1
         call neodebug#GotoConsoleWindow()
-        let s:neodbg_save_cursor = getpos(".")
+        let s:neodbg_save_console_cursor = getpos(".")
         close
         return 1
     endif
@@ -123,8 +129,9 @@ function neodebug#ToggleConsoleWindow()
     " endif
     let result = neodebug#CloseConsoleWindow()
     if result == 0
-        call neodebug#GotoConsoleWindow()
-        call setpos('.', s:neodbg_save_cursor)
+        " call neodebug#GotoConsoleWindow()
+        call neodebug#UpdateConsoleWindow()
+        " call setpos('.', s:neodbg_save_console_cursor)
     endif
 endfunction
 
@@ -396,7 +403,7 @@ function neodebug#CloseLocalsWindow()
     let winnr = bufwinnr(g:neodbg_locals_name)
     if winnr != -1
         call neodebug#GotoLocalsWindow()
-        let s:neodbg_save_cursor = getpos(".")
+        let s:neodbg_save_local_cursor = getpos(".")
         close
         let s:neodbg_locals_opened = 0
         return 1
@@ -523,7 +530,7 @@ function neodebug#CloseRegistersWindow()
     let winnr = bufwinnr(g:neodbg_registers_name)
     if winnr != -1
         call neodebug#GotoRegistersWindow()
-        let s:neodbg_save_cursor = getpos(".")
+        let s:neodbg_save_register_cursor = getpos(".")
         close
         return 1
     endif
@@ -653,7 +660,7 @@ function neodebug#CloseStackFramesWindow()
     let winnr = bufwinnr(g:neodbg_stackframes_name)
     if winnr != -1
         call neodebug#GotoStackFramesWindow()
-        let s:neodbg_save_cursor = getpos(".")
+        let s:neodbg_save_stack_cursor = getpos(".")
         close
         return 1
     endif
@@ -779,7 +786,7 @@ function neodebug#CloseThreadsWindow()
     let winnr = bufwinnr(g:neodbg_threads_name)
     if winnr != -1
         call neodebug#GotoThreadsWindow()
-        let s:neodbg_save_cursor = getpos(".")
+        let s:neodbg_save_thread_cursor = getpos(".")
         close
         return 1
     endif
@@ -903,7 +910,7 @@ function neodebug#CloseBreakpointsWindow()
     let winnr = bufwinnr(g:neodbg_breakpoints_name)
     if winnr != -1
         call neodebug#GotoBreakpointsWindow()
-        let s:neodbg_save_cursor = getpos(".")
+        let s:neodbg_save_break_cursor = getpos(".")
         close
         return 1
     endif
@@ -946,6 +953,13 @@ function! neodebug#GotoBreakpointsWindow()
     exec neodbg_winnr . "wincmd w"
 endf
 
+function! neodebug#UpdateConsole()
+    " if g:neodbg_openconsole_default == 0
+        " return
+    " endif
+    call neodebug#UpdateConsoleWindow()
+endf
+
 function! neodebug#UpdateLocals()
     if g:neodbg_openlocals_default == 0
         return
@@ -975,6 +989,28 @@ function! neodebug#UpdateBreakpoints()
         return
     endif
     call neodebug#UpdateBreakpointsWindow()
+endf
+
+function! neodebug#UpdateConsoleWindow()
+    " let g:neodbg_openconsole_default = 1
+    call neodebug#GotoConsoleWindow()
+
+    if len(g:append_messages) == 1 && g:append_messages[-1] == g:neodbg_prompt
+        "do not need output
+    else
+        if !empty(g:append_messages)
+            for append_message in (g:append_messages)
+                call append(line("$"), append_message)
+            endfor
+            " let  g:append_messages = []
+            let g:append_messages = ["(gdb) "]
+        endif
+    endif
+
+    $
+    starti!
+    redraw
+
 endf
 
 function! neodebug#UpdateLocalsWindow()

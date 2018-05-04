@@ -83,12 +83,15 @@ let s:ismswin = has('win32')
 let s:isunix = has('unix')
 
 let s:completers = []
-let s:neodbg_cmd_historys = ["first"]
+let s:neodbg_cmd_historys = [" "]
 
 let s:pc_id = 12
 let s:break_id = 13
 let s:stopped = 1
 let s:breakpoints = {}
+
+let s:cur_wid = 0
+let s:cur_winnr = 0
 
 " mode: i|n|c|<empty>
 " i - input command in console window and press enter
@@ -152,10 +155,10 @@ function! NeoDebug(cmd, ...)  " [mode]
         return
     endif
 
-    if -1 == bufwinnr(g:neodbg_console_name)
-        call neodebug#ToggleConsoleWindow()
-        return
-    endif
+    " if -1 == bufwinnr(g:neodbg_console_name)
+        " call neodebug#ToggleConsoleWindow()
+        " return
+    " endif
 
     " echomsg "usercmd[".usercmd."]"
     if g:neodbg_debugger == 'gdb' && usercmd =~ '^\s*(gdb)' 
@@ -203,6 +206,8 @@ function! NeoDebug(cmd, ...)  " [mode]
         let usercmd = s:neodbg_is_debugging ? 'continue' : 'run'
     endif
 
+    let s:cur_wid = win_getid(winnr())
+    let s:cur_winnr = bufwinnr("%")
     call NeoDebugSendCommand(usercmd, mode)
 endf
 
@@ -344,14 +349,18 @@ let s:append_msg = ''
 let s:appendline = ''
 let s:append_err = ''
 let s:comm_msg   = ''
+let g:append_messages = ["(gdb) "]
 " Handle a message received from debugger
 func s:HandleOutput(chan, msg)
     if g:neodbg_debuginfo == 1
         echomsg "<GDB>:".a:msg."[s:mode:".s:mode."]"
     endif
 
+    let neodbg_winnr = bufwinnr(g:neodbg_console_name)
+    " echomsg "neodbg_winnr".neodbg_winnr
+
     let cur_mode = mode()
-    let cur_wid = win_getid(winnr())
+    " let cur_wid = win_getid(winnr())
 
     " skip complete command,do not output completers
     if  "complete" == strpart(a:msg, 2, strlen("complete"))
@@ -415,7 +424,19 @@ func s:HandleOutput(chan, msg)
         endif
         " echomsg "updateinfo_line::".updateinfo_line
         if updateinfo_line == g:neodbg_prompt
-            call neodebug#GotoConsoleWindow()
+            if neodbg_winnr != -1
+                call neodebug#GotoConsoleWindow()
+
+                " if !empty(g:append_messages)
+                    " for append_message in (g:append_messages)
+                        " call append(line("$"), append_message)
+                    " endfor
+                    " " let  g:append_messages = []
+                    " let g:append_messages = ["(gdb) "]
+                " endif
+            else
+                call win_gotoid(s:cur_wid)
+            endif
         endif
     endif
 
@@ -473,10 +494,17 @@ func s:HandleOutput(chan, msg)
             let debugger_line = g:neodbg_prompt
         endif
 
-        call neodebug#GotoConsoleWindow()
+        if neodbg_winnr != -1
+            call neodebug#GotoConsoleWindow()
+        endif
 
         if s:neodbg_sendcmd_flag == 1
-            call setline(line('$'), getline('$').s:neodbg_cmd_historys[-1])
+            " call setline(line('$'), getline('$').s:neodbg_cmd_historys[-1])
+            if neodbg_winnr != -1
+                call setline(line('$'), getline('$').s:neodbg_cmd_historys[-1])
+            else
+                let g:append_messages[-1] =  g:append_messages[-1].s:neodbg_cmd_historys[-1]
+            endif
             let s:neodbg_sendcmd_flag = 0
         endif
 
@@ -487,7 +515,8 @@ func s:HandleOutput(chan, msg)
         " elseif debugger_line =~ '^\*' 
             " call append(line("$"), debugger_line)
 
-        elseif debugger_line =~ '^&"' && s:usercmd != strpart(debugger_line, 2 , strlen(debugger_line)-5)
+            "fix win32 gdb D:\\path\\path\\file
+        elseif debugger_line =~ '^&"' && s:usercmd != substitute(strpart(debugger_line, 2 , strlen(debugger_line)-5), '\\\\', '\\', 'g')
             let debugger_line = substitute(debugger_line, '\~"\\t', "\~\"\t\t", 'g')
             let debugger_line = substitute(debugger_line, '\\"', '"', 'g')
             let debugger_line = substitute(debugger_line, '\\\\', '\\', 'g')
@@ -495,7 +524,12 @@ func s:HandleOutput(chan, msg)
             if debugger_line =~ '\\n"\_$'
                 " echomsg "s:append_msg:".s:append_msg
                 let s:append_msg = substitute(s:append_msg, '\\n\|\\032\\032', '', 'g')
-                call append(line("$"), s:append_msg)
+                " call append(line("$"), s:append_msg)
+                if neodbg_winnr != -1
+                    call append(line("$"), s:append_msg)
+                else
+                    call add(g:append_messages, s:append_msg)
+                endif
                 let s:append_msg = ''
             endif
 
@@ -518,7 +552,12 @@ func s:HandleOutput(chan, msg)
             if debugger_line =~ '\\n"\_$'
                 " echomsg "s:appendfile:".s:appendline
                 let s:appendline = substitute(s:appendline, '\\n\|\\032\\032', '', 'g')
-                call append(line("$"), s:appendline)
+                " call append(line("$"), s:appendline)
+                if neodbg_winnr != -1
+                    call append(line("$"), s:appendline)
+                else
+                    call add(g:append_messages, s:appendline)
+                endif
                 let s:appendline = ''
             endif
 
@@ -527,31 +566,49 @@ func s:HandleOutput(chan, msg)
                 let s:append_err =  substitute(a:msg, '.*msg="\(.*\)"', '\1', '')
                 let s:append_err =  substitute(s:append_err, '\\"', '"', 'g')
                 if getline("$") != s:append_err
-                    call append(line("$"), s:append_err)
+                    " call append(line("$"), s:append_err)
+                    if neodbg_winnr != -1
+                        call append(line("$"), s:append_err)
+                    else
+                        call add(g:append_messages, s:append_err)
+                    endif
                 endif
             " endif
         elseif debugger_line == g:neodbg_prompt
-            call neodebug#GotoConsoleWindow()
             if getline("$") != g:neodbg_prompt
-                call append(line("$"), debugger_line)
+                " call append(line("$"), debugger_line)
+                    if neodbg_winnr != -1
+                        call neodebug#GotoConsoleWindow()
+                        call append(line("$"), debugger_line)
+                    else
+                        call add(g:append_messages, debugger_line)
+                    endif
             endif
         endif
 
         "vim bug  on linux ?
         if s:isunix
             if debugger_line =~ '^\(\*stopped\)'
-                call append(line("$"), g:neodbg_prompt)
+                " call append(line("$"), g:neodbg_prompt)
+                if neodbg_winnr != -1
+                    call append(line("$"), g:neodbg_prompt)
+                else
+                    call add(g:append_messages, g:neodbg_prompt)
+                endif
             endif
         endif
 
-        $
-        starti!
-        redraw
-        if cur_mode != "i"
-            stopi
+        if neodbg_winnr != -1
+            $
+            starti!
+            redraw
+            if cur_mode != "i"
+                stopi
+            endif
         endif
 
-        call win_gotoid(cur_wid)
+        " call win_gotoid(s:cur_wid)
+        " exec s:cur_winnr. "wincmd w"
     endif
 
 
@@ -822,7 +879,8 @@ func NeoDebugInstallCommandsHotkeys()
     nmap <silent> <C-F10>        :call <SID>RunToCursur()<CR>
     map! <silent> <C-S-F10>		 <c-o>:call <SID>Jump()<CR>
     map! <silent> <C-F10>        <c-o>:call <SID>RunToCursur()<CR>
-    nmap <silent> <F6>           :call NeoDebug("run")<CR>
+    nmap <silent> <F6>           :call neodebug#ToggleConsoleWindow()<CR>
+    imap <silent> <F6>           <c-o>:call neodebug#ToggleConsoleWindow()<CR>
     nmap <silent> <C-P>	         :NeoDebug p <C-R><C-W><CR>
     vmap <silent> <C-P>	         y:NeoDebug p <C-R>0<CR>
     nmap <silent> <Leader>pr	 :NeoDebug p <C-R><C-W><CR>
@@ -1356,12 +1414,15 @@ endfunction
 
 command! -nargs=* -complete=file NeoDebug :call NeoDebug(<q-args>)
 command! -nargs=* -complete=file NeoDebugStop :call NeoDebugStop(<q-args>)
+command!  ToggleConsole :call neodebug#ToggleConsoleWindow()
+command!  OpenConsole :call neodebug#UpdateConsoleWindow()
 command!  OpenLocals :call neodebug#UpdateLocalsWindow()
 command!  OpenRegisters :call neodebug#UpdateRegistersWindow()
 command!  OpenStacks :call neodebug#UpdateStackFramesWindow()
 command!  OpenThreads :call neodebug#UpdateThreadsWindow()
 command!  OpenBreaks :call neodebug#UpdateBreakpointsWindow()
 
+command!  CloseConsole :call neodebug#CloseConsole()
 command!  CloseLocals :call neodebug#CloseLocals()
 command!  CloseRegisters :call neodebug#CloseRegisters()
 command!  CloseStacks :call neodebug#CloseStackFrames()
