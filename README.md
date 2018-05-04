@@ -71,6 +71,10 @@ See Screenshot.
 
 	:NeoDebug         "start gdb and open a gdb console buffer in vim
 
+    :OpenConsole       "open neodebug console window
+    :CloseConsole      "close neodebug console window
+    :ToggleConsole     "toggle neodebug console window
+
     :OpenLocals        "open  [info locals] window
     :OpenRegisters     "open  [info registers] window
     :OpenStacks        "open  [backtrace] window
