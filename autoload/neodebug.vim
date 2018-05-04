@@ -358,13 +358,8 @@ function! neodebug#OpenLocals()
     syn match NeoDebugGoto /\v at ([^ ]+) line (\d+)/
     syn match NeoDebugGoto /\v at \(eval \d+\)..[^:]+:\d+/
 
-    noremap <buffer><silent> <ESC> :call neodebug#CloseLocals()<CR>
     nnoremap <buffer> <silent> <CR> :call NeoDebug(getline('.'), 'n')<cr>
     nmap <buffer> <silent> <2-LeftMouse> <cr>
-    imap <buffer> <silent> <2-LeftMouse> <cr>
-    imap <buffer> <silent> <kEnter> <cr>
-    imap <buffer> <silent> <LeftMouse> <Nop>
-    nmap <buffer> <silent> <kEnter> <cr>
 
 endfunction
 " Local window
@@ -492,13 +487,8 @@ function! neodebug#OpenRegisters()
     syn match NeoDebugGoto /\v at ([^ ]+) line (\d+)/
     syn match NeoDebugGoto /\v at \(eval \d+\)..[^:]+:\d+/
 
-    noremap <buffer><silent> <ESC> :call neodebug#CloseRegisters()<CR>
     nnoremap <buffer> <silent> <CR> :call NeoDebug(getline('.'), 'n')<cr>
     nmap <buffer> <silent> <2-LeftMouse> <cr>
-    imap <buffer> <silent> <2-LeftMouse> <cr>
-    imap <buffer> <silent> <kEnter> <cr>
-    imap <buffer> <silent> <LeftMouse> <Nop>
-    nmap <buffer> <silent> <kEnter> <cr>
 
 endfunction
 
@@ -624,13 +614,8 @@ function! neodebug#OpenStackFrames()
     syn match NeoDebugGoto /\v at ([^ ]+) line (\d+)/
     syn match NeoDebugGoto /\v at \(eval \d+\)..[^:]+:\d+/
 
-    noremap <buffer><silent> <ESC> :call neodebug#CloseStackFrames()<CR>
     nnoremap <buffer> <silent> <CR> :call NeoDebug(getline('.'), 'n')<cr>
     nmap <buffer> <silent> <2-LeftMouse> <cr>
-    imap <buffer> <silent> <2-LeftMouse> <cr>
-    imap <buffer> <silent> <kEnter> <cr>
-    imap <buffer> <silent> <LeftMouse> <Nop>
-    nmap <buffer> <silent> <kEnter> <cr>
 
 endfunction
 
@@ -757,13 +742,8 @@ function! neodebug#OpenThreads()
     syn match NeoDebugGoto /\v at ([^ ]+) line (\d+)/
     syn match NeoDebugGoto /\v at \(eval \d+\)..[^:]+:\d+/
 
-    noremap <buffer><silent> <ESC> :call neodebug#CloseThreads()<CR>
     nnoremap <buffer> <silent> <CR> :call NeoDebug(getline('.'), 'n')<cr>
     nmap <buffer> <silent> <2-LeftMouse> <cr>
-    imap <buffer> <silent> <2-LeftMouse> <cr>
-    imap <buffer> <silent> <kEnter> <cr>
-    imap <buffer> <silent> <LeftMouse> <Nop>
-    nmap <buffer> <silent> <kEnter> <cr>
 
 
 endfunction
@@ -888,13 +868,8 @@ function! neodebug#OpenBreakpoints()
     syn match NeoDebugGoto /\v at ([^ ]+) line (\d+)/
     syn match NeoDebugGoto /\v at \(eval \d+\)..[^:]+:\d+/
 
-    noremap <buffer><silent> <ESC> :call neodebug#CloseBreakpoints()<CR>
     nnoremap <buffer> <silent> <CR> :call NeoDebug(getline('.'), 'n')<cr>
     nmap <buffer> <silent> <2-LeftMouse> <cr>
-    imap <buffer> <silent> <2-LeftMouse> <cr>
-    imap <buffer> <silent> <kEnter> <cr>
-    imap <buffer> <silent> <LeftMouse> <Nop>
-    nmap <buffer> <silent> <kEnter> <cr>
 
 endfunction
 " Breakpoints window
