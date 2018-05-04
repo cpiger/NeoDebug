@@ -75,7 +75,8 @@ let s:neodbg_chan = 0
 
 let s:neodbg_is_debugging = 0
 let s:neodbg_running = 0
-let s:neodbg_exrc = $HOME.'/neodbg_exrc'
+let s:neodbg_exrc_dir = $HOME.'/.neodebug'
+let s:neodbg_exrc = s:neodbg_exrc_dir . '/neodbg_exrc'
 let s:neodbg_port = 30777 
 
 let s:ismswin = has('win32')
@@ -124,20 +125,21 @@ function! NeoDebug(cmd, ...)  " [mode]
         call s:NeoDebugStart(usercmd)
 
         " save current setting and restore when neodebug quits via 'so .exrc'
+        if finddir(s:neodbg_exrc_dir) == ''
+            call mkdir(s:neodbg_exrc_dir, "p")
+        endif
         exec 'mk! ' . s:neodbg_exrc . s:neodbg_port
-        "delete line set runtimepath for missing some functions after neodebug quit
-        silent exec '!start /b sed -i "/set /d" ' . s:neodbg_exrc . s:neodbg_port
-        let sed_tmp = fnamemodify(s:neodbg_exrc . s:neodbg_port, ":p:h")
-        silent exec '!start /b rm -f '. sed_tmp . '/sed*'   
+        let sed_cmd = 'sed -i "/^set /d" ' . s:neodbg_exrc . s:neodbg_port
+        call  job_start(sed_cmd)
 
         set nocursorline
         set nocursorcolumn
 
         call neodebug#OpenConsole()
         let s:neodbg_console_win = win_getid(winnr())
-        "fix minibuf conflict
-        call neodebug#CloseConsoleWindow()
-        call neodebug#OpenConsoleWindow()
+        "fix minibufexpl plugin conflict
+        " call neodebug#CloseConsoleWindow()
+        " call neodebug#OpenConsoleWindow()
 
         let s:neodbg_quitted = 0
         let s:neodbg_running = 1
@@ -204,7 +206,17 @@ function! NeoDebug(cmd, ...)  " [mode]
     call NeoDebugSendCommand(usercmd, mode)
 endf
 
+function! s:DeleteSedTempfile()
+    let sed_tmp = fnamemodify(s:neodbg_exrc . s:neodbg_port, ":p:h")
+    if s:ismswin
+        silent exec '!start /b del /f '. sed_tmp . '/sed*'   
+    endif
+endfunction
+
 function! NeoDebugStop(cmd)
+	if !s:neodbg_running
+		return
+	endif
     call job_stop(s:commjob)
 endfunction
 
@@ -267,7 +279,7 @@ func s:NeoDebugStart(cmd)
     augroup NeoDebugAutoCMD
         au BufRead * call s:BufferRead()
         au BufUnload * call s:BufferUnload()
-        au VimLeavePre * call NeoDebugDeleteCommandsHotkeys()
+        au VimLeavePre * call delete(s:neodbg_exrc . s:neodbg_port)
     augroup END
 
 endfunc

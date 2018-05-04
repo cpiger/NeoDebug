@@ -56,7 +56,7 @@ Screenshot:
 My dev environment:
 - Windows: 
  - tdm-gcc-5.1.0-3.exe
- - sed-4.2.1-bin.zip(http://sourceforge.net/projects/gnuwin32/files//sed/4.2.1/sed-4.2.1-bin.zip/download)
+ - sed (https://raw.githubusercontent.com/mbuilov/sed-windows/master/sed-4.4-x64.exe)  (This Sed do not creates un-deleteable files in Windows.)
  - Vim 8.0 Included patches: 1-1532 (https://tuxproject.de/projects/vim/)
 - Linux:
  - Gdb 7.12.1-48.fc25
@@ -69,7 +69,7 @@ My dev environment:
 In vim or gvim, run :NeoDebug command, e.g. 
 See Screenshot.
 
-	:NeoDebug         "start
+	:NeoDebug         "start gdb and open a gdb console buffer in vim
 
     :OpenLocals        "open  [info locals] window
     :OpenRegisters     "open  [info registers] window
