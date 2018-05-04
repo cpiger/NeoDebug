@@ -340,8 +340,10 @@ endfunc
 
 let s:updateinfo_skip_flag = 0
 let s:completer_skip_flag = 0
+let s:append_msg = ''
 let s:appendline = ''
-let s:comm_msg = ''
+let s:append_err = ''
+let s:comm_msg   = ''
 " Handle a message received from debugger
 func s:HandleOutput(chan, msg)
     if g:neodbg_debuginfo == 1
@@ -481,14 +483,34 @@ func s:HandleOutput(chan, msg)
         if debugger_line =~ '^\~" >"' 
             call append(line("$"), strpart(debugger_line, 2, strlen(debugger_line)-3))
             " elseif debugger_line =~ '^\~"\S\+' 
-        elseif debugger_line =~ '^\~"' 
 
+        " elseif debugger_line =~ '^\*' 
+            " call append(line("$"), debugger_line)
+
+        elseif debugger_line =~ '^&"' && s:usercmd != strpart(debugger_line, 2 , strlen(debugger_line)-5)
+            let debugger_line = substitute(debugger_line, '\~"\\t', "\~\"\t\t", 'g')
+            let debugger_line = substitute(debugger_line, '\\"', '"', 'g')
+            let debugger_line = substitute(debugger_line, '\\\\', '\\', 'g')
+            let s:append_msg .= strpart(debugger_line, 2, strlen(debugger_line)-3)
+            if debugger_line =~ '\\n"\_$'
+                " echomsg "s:append_msg:".s:append_msg
+                let s:append_msg = substitute(s:append_msg, '\\n\|\\032\\032', '', 'g')
+                call append(line("$"), s:append_msg)
+                let s:append_msg = ''
+            endif
+
+        elseif debugger_line =~ '^\~"' 
             if debugger_line =~ '^\~"\(Kill the program\|Program exited\|The program is not being run\|The program no longer exists\|Detaching from\|Inferior\)'
                 let s:neodbg_is_debugging = 0
             elseif  debugger_line =~ '^\~"\(Starting program\|Attaching to\)'
-                let s:neodbg_is_debugging = 1
+                " ~"Starting program:  \n" 
+                let index_colon = stridx(debugger_line, ":")
+                let program_name = strpart(debugger_line, index_colon+2, stridx(debugger_line, ' \n', index_colon)-(index_colon+2) )
+                if program_name != ''
+                    let s:neodbg_is_debugging = 1
+                endif
             endif
-
+            " echomsg 's:neodbg_is_debugging'. s:neodbg_is_debugging
             let debugger_line = substitute(debugger_line, '\~"\\t', "\~\"\t\t", 'g')
             let debugger_line = substitute(debugger_line, '\\"', '"', 'g')
             let debugger_line = substitute(debugger_line, '\\\\', '\\', 'g')
@@ -499,12 +521,15 @@ func s:HandleOutput(chan, msg)
                 call append(line("$"), s:appendline)
                 let s:appendline = ''
             endif
+
         elseif debugger_line =~ '^\^error,msg='
-            if debugger_line =~ '^\^error,msg="The program'
+            " if debugger_line =~ '^\^error,msg="The program'
                 let s:append_err =  substitute(a:msg, '.*msg="\(.*\)"', '\1', '')
                 let s:append_err =  substitute(s:append_err, '\\"', '"', 'g')
-                call append(line("$"), s:append_err)
-            endif
+                if getline("$") != s:append_err
+                    call append(line("$"), s:append_err)
+                endif
+            " endif
         elseif debugger_line == g:neodbg_prompt
             call neodebug#GotoConsoleWindow()
             if getline("$") != g:neodbg_prompt
@@ -938,6 +963,7 @@ endfunc
 " :Next, :Continue, etc - send a command to debugger
 let s:neodbg_quitted = 0
 let s:neodbg_sendcmd_flag = 0
+let s:usercmd = ''
 " func NeoDebugSendCommand(cmd)
 function! NeoDebugSendCommand(cmd, ...)  " [mode]
     " echomsg "<GDB>cmd:[".a:cmd."]"
@@ -973,6 +999,7 @@ function! NeoDebugSendCommand(cmd, ...)  " [mode]
         echomsg "<GDB>:[".usercmd."][mode:".mode."]"
         silent echohl None
     endif
+    let s:usercmd = usercmd
     call ch_sendraw(s:commjob, usercmd . "\n")
     if usercmd == 'q'
         let  s:neodbg_quitted = 1
