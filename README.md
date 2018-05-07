@@ -114,6 +114,16 @@ Options:
     let g:neodbg_openlocals_default    = 1   " Open locals window, Default: 1
     let g:neodbg_openregisters_default = 0   " Open registers window, Default: 0
 
+##TODO
+
+1. Breakpoints disable/enable
+
+2. Watch window/ Expression window
+
+3. vim swap file notification
+
+4. source file changed notification and update breakpoints
+
 
 ## Thanks
 skyshore2001
