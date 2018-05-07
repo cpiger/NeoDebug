@@ -494,7 +494,9 @@ func s:HandleOutput(chan, msg)
                 if updateinfo_line =~ '\\n"\_$'
                     " echomsg "s:appendfile:".s:appendline
                     let s:appendline = substitute(s:appendline, '\\n\|\\032\\032', '', 'g')
+                    call neodebug#SetBufEnable()
                     call append(line("$")-1, s:appendline)
+                    call neodebug#SetBufDisable()
                     let s:appendline = ''
                     " redraw!
                 endif

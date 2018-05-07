@@ -1053,35 +1053,45 @@ endfunction
 function! neodebug#UpdateLocalsWindow()
     let g:neodbg_openlocals_default = 1
     call neodebug#GotoLocalsWindow()
+    call neodebug#SetBufEnable()
     silent exec '0,' . line("$") . 'd _'
+    call neodebug#SetBufDisable()
     call NeoDebugSendCommand("info locals", 'u')
 endfunction
 
 function! neodebug#UpdateRegistersWindow()
     let g:neodbg_openregisters_default = 1
     call neodebug#GotoRegistersWindow()
+    call neodebug#SetBufEnable()
     silent exec '0,' . line("$") . 'd _'
+    call neodebug#SetBufDisable()
     call NeoDebugSendCommand("info registers", 'u')
 endfunction
 
 function! neodebug#UpdateStackFramesWindow()
     let g:neodbg_openstacks_default = 1
     call neodebug#GotoStackFramesWindow()
+    call neodebug#SetBufEnable()
     silent exec '0,' . line("$") . 'd _'
+    call neodebug#SetBufDisable()
     call NeoDebugSendCommand("backtrace", 'u')
 endfunction
 
 function! neodebug#UpdateThreadsWindow()
     let g:neodbg_openthreads_default = 1
     call neodebug#GotoThreadsWindow()
+    call neodebug#SetBufEnable()
     silent exec '0,' . line("$") . 'd _'
+    call neodebug#SetBufDisable()
     call NeoDebugSendCommand("info threads", 'u')
 endfunction
 
 function! neodebug#UpdateBreakpointsWindow()
     let g:neodbg_openbreaks_default = 1
     call neodebug#GotoBreakpointsWindow()
+    call neodebug#SetBufEnable()
     silent exec '0,' . line("$") . 'd _'
+    call neodebug#SetBufDisable()
     call NeoDebugSendCommand("info breakpoints", 'u')
 endfunction
 
@@ -1089,7 +1099,9 @@ endfunction
 function! neodebug#UpdateDisasWindow()
     let g:neodbg_opendisas_default = 1
     call neodebug#GotoDisasWindow()
+    call neodebug#SetBufEnable()
     silent exec '0,' . line("$") . 'd _'
+    call neodebug#SetBufDisable()
     call NeoDebugSendCommand("disassemble", 'u')
 
 endfunction
@@ -1385,6 +1397,16 @@ function! neodebug#DeletePopupMenu()
             aunmenu PopUp.Evaluate
         endif
     endif
+endfunction
+
+function! neodebug#SetBufEnable()
+    " clear the buffer and make it editable
+    setlocal ma noro
+endfunction
+
+function! neodebug#SetBufDisable()
+    " make it not-editable and close the buffer
+    setlocal noma ro cul nomod
 endfunction
 
 " vim: set foldmethod=marker 
