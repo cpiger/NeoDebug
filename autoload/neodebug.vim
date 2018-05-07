@@ -74,7 +74,7 @@ function! neodebug#OpenConsole()
     setlocal foldmarker={,}
     setlocal foldmethod=marker
 
-    call NeoDebugInstallCommandsHotkeys()
+    call neodebug#InstallCommandsShotcut()
 
 
     starti!
@@ -108,7 +108,7 @@ function! neodebug#OpenConsoleWindow(...)
     if line('$') <= 1 && g:neodbg_enable_help
         silent call append ( 0, s:help_text )
     endif
-    call NeoDebugInstallWinbar()
+    call neodebug#InstallWinbar()
 endfunction
 
 function neodebug#CloseConsole()
@@ -345,29 +345,7 @@ function! neodebug#OpenLocals()
     setlocal foldmethod=marker
 
 
-    " highlight NeoDebugGoto guifg=Blue
-    hi def link NeoDebugKey Statement
-    hi def link NeoDebugHiLn Statement
-    hi def link NeoDebugGoto Underlined
-    hi def link NeoDebugPtr Underlined
-    hi def link NeoDebugFrame LineNr
-    hi def link NeoDebugCmd Macro
-    " syntax
-    syn keyword NeoDebugKey Function Breakpoint Catchpoint 
-    syn match NeoDebugFrame /\v^#\d+ .*/ contains=NeoDebugGoto
-    syn match NeoDebugGoto /\v<at [^()]+:\d+|file .+, line \d+/
-    syn match NeoDebugCmd /^(gdb).*/
-    syn match NeoDebugPtr /\v(^|\s+)\zs\$?\w+ \=.{-0,} 0x\w+/
-    " highlight the whole line for 
-    " returns for info threads | info break | finish | watchpoint
-    syn match NeoDebugHiLn /\v^\s*(Id\s+Target Id|Num\s+Type|Value returned is|(Old|New) value =|Hardware watchpoint).*$/
-
-    " syntax for perldb
-    syn match NeoDebugCmd /^\s*DB<.*/
-    "	syn match NeoDebugFrame /\v^#\d+ .*/ contains=NeoDebugGoto
-    syn match NeoDebugGoto /\v from file ['`].+' line \d+/
-    syn match NeoDebugGoto /\v at ([^ ]+) line (\d+)/
-    syn match NeoDebugGoto /\v at \(eval \d+\)..[^:]+:\d+/
+    call neodebug#SetWindowSytaxHilight()
 
     nnoremap <buffer> <silent> <CR> :call NeoDebug(getline('.'), 'n')<cr>
     nmap <buffer> <silent> <2-LeftMouse> <cr>
@@ -474,29 +452,7 @@ function! neodebug#OpenRegisters()
     setlocal foldmarker={,}
     setlocal foldmethod=marker
 
-    " highlight NeoDebugGoto guifg=Blue
-    hi def link NeoDebugKey Statement
-    hi def link NeoDebugHiLn Statement
-    hi def link NeoDebugGoto Underlined
-    hi def link NeoDebugPtr Underlined
-    hi def link NeoDebugFrame LineNr
-    hi def link NeoDebugCmd Macro
-    " syntax
-    syn keyword NeoDebugKey Function Breakpoint Catchpoint 
-    syn match NeoDebugFrame /\v^#\d+ .*/ contains=NeoDebugGoto
-    syn match NeoDebugGoto /\v<at [^()]+:\d+|file .+, line \d+/
-    syn match NeoDebugCmd /^(gdb).*/
-    syn match NeoDebugPtr /\v(^|\s+)\zs\$?\w+ \=.{-0,} 0x\w+/
-    " highlight the whole line for 
-    " returns for info threads | info break | finish | watchpoint
-    syn match NeoDebugHiLn /\v^\s*(Id\s+Target Id|Num\s+Type|Value returned is|(Old|New) value =|Hardware watchpoint).*$/
-
-    " syntax for perldb
-    syn match NeoDebugCmd /^\s*DB<.*/
-    "	syn match NeoDebugFrame /\v^#\d+ .*/ contains=NeoDebugGoto
-    syn match NeoDebugGoto /\v from file ['`].+' line \d+/
-    syn match NeoDebugGoto /\v at ([^ ]+) line (\d+)/
-    syn match NeoDebugGoto /\v at \(eval \d+\)..[^:]+:\d+/
+    call neodebug#SetWindowSytaxHilight()
 
     nnoremap <buffer> <silent> <CR> :call NeoDebug(getline('.'), 'n')<cr>
     nmap <buffer> <silent> <2-LeftMouse> <cr>
@@ -601,29 +557,7 @@ function! neodebug#OpenStackFrames()
     setlocal foldmethod=marker
 
 
-    " highlight NeoDebugGoto guifg=Blue
-    hi def link NeoDebugKey Statement
-    hi def link NeoDebugHiLn Statement
-    hi def link NeoDebugGoto Underlined
-    hi def link NeoDebugPtr Underlined
-    hi def link NeoDebugFrame LineNr
-    hi def link NeoDebugCmd Macro
-    " syntax
-    syn keyword NeoDebugKey Function Breakpoint Catchpoint 
-    syn match NeoDebugFrame /\v^#\d+ .*/ contains=NeoDebugGoto
-    syn match NeoDebugGoto /\v<at [^()]+:\d+|file .+, line \d+/
-    syn match NeoDebugCmd /^(gdb).*/
-    syn match NeoDebugPtr /\v(^|\s+)\zs\$?\w+ \=.{-0,} 0x\w+/
-    " highlight the whole line for 
-    " returns for info threads | info break | finish | watchpoint
-    syn match NeoDebugHiLn /\v^\s*(Id\s+Target Id|Num\s+Type|Value returned is|(Old|New) value =|Hardware watchpoint).*$/
-
-    " syntax for perldb
-    syn match NeoDebugCmd /^\s*DB<.*/
-    "	syn match NeoDebugFrame /\v^#\d+ .*/ contains=NeoDebugGoto
-    syn match NeoDebugGoto /\v from file ['`].+' line \d+/
-    syn match NeoDebugGoto /\v at ([^ ]+) line (\d+)/
-    syn match NeoDebugGoto /\v at \(eval \d+\)..[^:]+:\d+/
+    call neodebug#SetWindowSytaxHilight()
 
     nnoremap <buffer> <silent> <CR> :call NeoDebug(getline('.'), 'n')<cr>
     nmap <buffer> <silent> <2-LeftMouse> <cr>
@@ -729,29 +663,7 @@ function! neodebug#OpenThreads()
     setlocal foldmarker={,}
     setlocal foldmethod=marker
 
-    " highlight NeoDebugGoto guifg=Blue
-    hi def link NeoDebugKey Statement
-    hi def link NeoDebugHiLn Statement
-    hi def link NeoDebugGoto Underlined
-    hi def link NeoDebugPtr Underlined
-    hi def link NeoDebugFrame LineNr
-    hi def link NeoDebugCmd Macro
-    " syntax
-    syn keyword NeoDebugKey Function Breakpoint Catchpoint 
-    syn match NeoDebugFrame /\v^#\d+ .*/ contains=NeoDebugGoto
-    syn match NeoDebugGoto /\v<at [^()]+:\d+|file .+, line \d+/
-    syn match NeoDebugCmd /^(gdb).*/
-    syn match NeoDebugPtr /\v(^|\s+)\zs\$?\w+ \=.{-0,} 0x\w+/
-    " highlight the whole line for 
-    " returns for info threads | info break | finish | watchpoint
-    syn match NeoDebugHiLn /\v^\s*(Id\s+Target Id|Num\s+Type|Value returned is|(Old|New) value =|Hardware watchpoint).*$/
-
-    " syntax for perldb
-    syn match NeoDebugCmd /^\s*DB<.*/
-    "	syn match NeoDebugFrame /\v^#\d+ .*/ contains=NeoDebugGoto
-    syn match NeoDebugGoto /\v from file ['`].+' line \d+/
-    syn match NeoDebugGoto /\v at ([^ ]+) line (\d+)/
-    syn match NeoDebugGoto /\v at \(eval \d+\)..[^:]+:\d+/
+    call neodebug#SetWindowSytaxHilight()
 
     nnoremap <buffer> <silent> <CR> :call NeoDebug(getline('.'), 'n')<cr>
     nmap <buffer> <silent> <2-LeftMouse> <cr>
@@ -855,29 +767,7 @@ function! neodebug#OpenBreakpoints()
     setlocal foldmarker={,}
     setlocal foldmethod=marker
 
-    " highlight NeoDebugGoto guifg=Blue
-    hi def link NeoDebugKey Statement
-    hi def link NeoDebugHiLn Statement
-    hi def link NeoDebugGoto Underlined
-    hi def link NeoDebugPtr Underlined
-    hi def link NeoDebugFrame LineNr
-    hi def link NeoDebugCmd Macro
-    " syntax
-    syn keyword NeoDebugKey Function Breakpoint Catchpoint 
-    syn match NeoDebugFrame /\v^#\d+ .*/ contains=NeoDebugGoto
-    syn match NeoDebugGoto /\v<at [^()]+:\d+|file .+, line \d+/
-    syn match NeoDebugCmd /^(gdb).*/
-    syn match NeoDebugPtr /\v(^|\s+)\zs\$?\w+ \=.{-0,} 0x\w+/
-    " highlight the whole line for 
-    " returns for info threads | info break | finish | watchpoint
-    syn match NeoDebugHiLn /\v^\s*(Id\s+Target Id|Num\s+Type|Value returned is|(Old|New) value =|Hardware watchpoint).*$/
-
-    " syntax for perldb
-    syn match NeoDebugCmd /^\s*DB<.*/
-    "	syn match NeoDebugFrame /\v^#\d+ .*/ contains=NeoDebugGoto
-    syn match NeoDebugGoto /\v from file ['`].+' line \d+/
-    syn match NeoDebugGoto /\v at ([^ ]+) line (\d+)/
-    syn match NeoDebugGoto /\v at \(eval \d+\)..[^:]+:\d+/
+    call neodebug#SetWindowSytaxHilight()
 
     nnoremap <buffer> <silent> <CR> :call NeoDebug(getline('.'), 'n')<cr>
     nmap <buffer> <silent> <2-LeftMouse> <cr>
@@ -1079,4 +969,253 @@ function! neodebug#UpdateLocalsOrRegisters()
         call neodebug#UpdateLocalsWindow()
     endif
 endfunction
+
+
+" Install commands in the current window to control the debugger.
+func neodebug#InstallCommandsShotcut()
+
+    call neodebug#InstallCommand()
+
+    if has('menu') && &mouse != ''
+        call neodebug#InstallWinbar()
+        call  neodebug#InstallPopupMenu()
+    endif
+
+    call neodebug#SetWindowSytaxHilight()
+    "disable some key
+    call neodebug#CustomConsoleKey()
+    " shortcut in NeoDebug window
+    call neodebug#InstallShotcut()
+    " menu
+    call neodebug#InstallMenu()
+endfunc
+
+function! neodebug#InstallCommand()
+    command Break call NeoDebugSetBreakpoint()
+    command Clear call NeoDebugClearBreakpoint()
+    command Step call NeoDebugSendCommand('-exec-step')
+    command Over call NeoDebugSendCommand('-exec-next')
+    command Finish call NeoDebugSendCommand('-exec-finish')
+    command -nargs=* Run call NeoDebugRun(<q-args>)
+    command -nargs=* Arguments call NeoDebugSendCommand('-exec-arguments ' . <q-args>)
+    command Stop call NeoDebugSendCommand('-exec-interrupt')
+    command Continue call NeoDebugSendCommand('-exec-continue')
+    command -range -nargs=* Evaluate call NeoDebugEvaluate(<range>, <q-args>)
+    command Winbar call neodebug#InstallWinbar()
+endfunction
+
+function! neodebug#DeleteCommand()
+    delcommand Break
+    delcommand Clear
+    delcommand Step
+    delcommand Over
+    delcommand Finish
+    delcommand Run
+    delcommand Arguments
+    delcommand Stop
+    delcommand Continue
+    delcommand Evaluate
+    delcommand Winbar
+endfunction
+
+function! neodebug#SetWindowSytaxHilight()
+
+    hi NeoDbgBreakPoint    guibg=darkblue  ctermbg=darkblue term=reverse 
+    hi NeoDbgDisabledBreak guibg=lightblue guifg=black ctermbg=lightblue ctermfg=black
+    hi NeoDbgPC            guibg=Orange    guifg=black gui=bold ctermbg=Yellow ctermfg=black
+
+    " hi NeoDbgBreakPoint guibg=darkred guifg=white ctermbg=darkred ctermfg=white
+    " hi NeoDbgDisabledBreak guibg=lightred guifg=black ctermbg=lightred ctermfg=black
+
+    sign define NeoDebugBP  linehl=NeoDbgBreakPoint    text=B> texthl=NeoDbgBreakPoint
+    sign define NeoDebugDBP linehl=NeoDbgDisabledBreak text=b> texthl=NeoDbgDisabledBreak
+    sign define NeoDebugPC  linehl=NeoDbgPC            text=>> texthl=NeoDbgPC
+
+    " highlight NeoDebugGoto guifg=Blue
+    hi def link NeoDebugKey Statement
+    hi def link NeoDebugHiLn Statement
+    hi def link NeoDebugGoto Underlined
+    hi def link NeoDebugPtr Underlined
+    hi def link NeoDebugFrame LineNr
+    hi def link NeoDebugCmd Macro
+    " syntax
+    syn keyword NeoDebugKey Function Breakpoint Catchpoint 
+    syn match NeoDebugFrame /\v^#\d+ .*/ contains=NeoDebugGoto
+    syn match NeoDebugGoto /\v<at [^()]+:\d+|file .+, line \d+/
+    syn match NeoDebugCmd /^(gdb).*/
+    syn match NeoDebugPtr /\v(^|\s+)\zs\$?\w+ \=.{-0,} 0x\w+/
+    " highlight the whole line for 
+    " returns for info threads | info break | finish | watchpoint
+    syn match NeoDebugHiLn /\v^\s*(Id\s+Target Id|Num\s+Type|Value returned is|(Old|New) value =|Hardware watchpoint).*$/
+
+    " syntax for perldb
+    syn match NeoDebugCmd /^\s*DB<.*/
+    "	syn match NeoDebugFrame /\v^#\d+ .*/ contains=NeoDebugGoto
+    syn match NeoDebugGoto /\v from file ['`].+' line \d+/
+    syn match NeoDebugGoto /\v at ([^ ]+) line (\d+)/
+    syn match NeoDebugGoto /\v at \(eval \d+\)..[^:]+:\d+/
+
+endfunction
+
+function! neodebug#UnsetWindowSytaxHilight()
+    sign undefine NeoDebugPC
+    sign undefine NeoDebugBP
+endfunction
+
+function! neodebug#InstallShotcut()
+
+    " TODO: can the K mapping be restored?
+    nnoremap K :Evaluate<CR>
+
+    noremap <buffer><silent>? :call neodebug#ToggleHelp()<cr>
+
+    inoremap <expr><buffer> <silent> <c-p>  "\<c-x><c-l>"
+    inoremap <expr><buffer> <silent> <c-r>  "\<c-x><c-n>"
+
+    inoremap <expr><buffer><silent> <TAB>    pumvisible() ? "\<C-n>" : "\<c-x><c-u>"
+    inoremap <expr><buffer><silent> <S-TAB>  pumvisible() ? "\<C-p>" : "\<c-x><c-u>"
+    noremap <buffer><silent> <Tab> ""
+    noremap <buffer><silent> <S-Tab> ""
+
+    noremap <buffer><silent> <ESC> :call neodebug#CloseConsoleWindow()<CR>
+
+    inoremap <expr><buffer> <silent> <CR> pumvisible() ? "\<c-y><c-o>:call NeoDebug(getline('.'), 'i')<cr>" : "<c-o>:call NeoDebug(getline('.'), 'i')<cr>"
+    " inoremap <buffer> <silent> <C-CR> :<c-o>:call NeoDebug("", 'i')<cr>
+
+    nnoremap <buffer> <silent> <CR> :call NeoDebug(getline('.'), 'n')<cr>
+    nmap <buffer> <silent> <2-LeftMouse> <cr>
+
+    nmap <silent> <F9>	         :call NeoDebugToggleBreakpoint()<CR>
+    map! <silent> <F9>	         <c-o>:call NeoDebugToggleBreakpoint()<CR>
+
+    nmap <silent> <Leader>ju	 :call NeoDebugJump()<CR>
+    nmap <silent> <C-S-F10>		 :call NeoDebugJump()<CR>
+    nmap <silent> <C-F10>        :call NeoDebugRunToCursur()<CR>
+    map! <silent> <C-S-F10>		 <c-o>:call NeoDebugJump()<CR>
+    map! <silent> <C-F10>        <c-o>:call NeoDebugRunToCursur()<CR>
+    nmap <silent> <F6>           :call neodebug#ToggleConsoleWindow()<CR>
+    imap <silent> <F6>           <c-o>:call neodebug#ToggleConsoleWindow()<CR>
+    nmap <silent> <C-P>	         :NeoDebug p <C-R><C-W><CR>
+    vmap <silent> <C-P>	         y:NeoDebug p <C-R>0<CR>
+    nmap <silent> <Leader>pr	 :NeoDebug p <C-R><C-W><CR>
+    vmap <silent> <Leader>pr	 y:NeoDebug p <C-R>0<CR>
+    nmap <silent> <Leader>bt	 :NeoDebug bt<CR>
+
+    nmap <silent> <F5>    :NeoDebug c<cr>
+    nmap <silent> <S-F5>  :NeoDebug k<cr>
+    nmap <silent> <F10>   :NeoDebug n<cr>
+    nmap <silent> <F11>   :NeoDebug s<cr>
+    nmap <silent> <S-F11> :NeoDebug finish<cr>
+    nmap <silent> <c-c> :NeoDebugStop<cr>
+
+    map! <silent> <F5>    <c-o>:NeoDebug c<cr>
+    map! <silent> <S-F5>  <c-o>:NeoDebug k<cr>
+    map! <silent> <F10>   <c-o>:NeoDebug n<cr>
+    map! <silent> <F11>   <c-o>:NeoDebug s<cr>
+    map! <silent> <S-F11> <c-o>:NeoDebug finish<cr>
+
+endfunction
+
+function! neodebug#DeleteShotcut()
+    nunmap K
+    unmap <F9>
+    unmap <Leader>ju
+    unmap <C-S-F10>
+    unmap <C-F10>
+    unmap <C-P>
+    unmap <Leader>pr
+    unmap <Leader>bt
+
+    unmap <F5>
+    unmap <S-F5>
+    unmap <F10>
+    unmap <F11>
+    unmap <S-F11>
+endfunction
+
+function! neodebug#InstallMenu()
+    amenu NeoDebug.Run/Continue<tab>F5 					:NeoDebug c<CR>
+    amenu NeoDebug.Step\ into<tab>F11					:NeoDebug s<CR>
+    amenu NeoDebug.Next<tab>F10							:NeoDebug n<CR>
+    amenu NeoDebug.Step\ out<tab>Shift-F11				:NeoDebug finish<CR>
+    amenu NeoDebug.Run\ to\ cursor<tab>Ctrl-F10			:call NeoDebugRunToCursur()<CR>
+    amenu NeoDebug.Stop\ debugging\ (Kill)<tab>Shift-F5	:NeoDebug k<CR>
+    amenu NeoDebug.-sep1- :
+
+    amenu NeoDebug.Show\ callstack<tab>\\bt				:call NeoDebug("where")<CR>
+    amenu NeoDebug.Set\ next\ statement\ (Jump)<tab>Ctrl-Shift-F10\ or\ \\ju 	:call NeoDebugJump()<CR>
+    amenu NeoDebug.Top\ frame 						:call NeoDebug("frame 0")<CR>
+    amenu NeoDebug.Callstack\ up 					:call NeoDebug("up")<CR>
+    amenu NeoDebug.Callstack\ down 					:call NeoDebug("down")<CR>
+    amenu NeoDebug.-sep2- :
+
+    amenu NeoDebug.Preview\ variable<tab>Ctrl-P		:NeoDebug p <C-R><C-W><CR> 
+    amenu NeoDebug.Print\ variable<tab>\\pr			:NeoDebug p <C-R><C-W><CR> 
+    amenu NeoDebug.Show\ breakpoints 				:NeoDebug info breakpoints<CR>
+    amenu NeoDebug.Show\ locals 					:NeoDebug info locals<CR>
+    amenu NeoDebug.Show\ args 						:NeoDebug info args<CR>
+    amenu NeoDebug.Quit			 					:NeoDebug q<CR>
+endfunction
+
+function! neodebug#DeleteMenu()
+    aunmenu NeoDebug
+endfunction
+
+let s:winbar_winids = []
+
+" Install the window toolbar in the current window.
+function! neodebug#InstallWinbar()
+    nnoremenu WinBar.Step   :NeoDebug s<CR>
+    nnoremenu WinBar.Next   :NeoDebug n<CR>
+    nnoremenu WinBar.Finish :NeoDebug finish<CR>
+    nnoremenu WinBar.Cont   :NeoDebug c<CR>
+    nnoremenu WinBar.Stop   :NeoDebug k<CR>
+    nnoremenu WinBar.Eval   :Evaluate<CR>
+    call add(s:winbar_winids, win_getid(winnr()))
+endfunction
+
+function! neodebug#DeleteWinbar()
+    if has('menu')
+        " Remove the WinBar entries from all windows where it was added.
+        let curwinid = win_getid(winnr())
+        for winid in s:winbar_winids
+            if win_gotoid(winid)
+                aunmenu WinBar.Step
+                aunmenu WinBar.Next
+                aunmenu WinBar.Finish
+                aunmenu WinBar.Cont
+                aunmenu WinBar.Stop
+                aunmenu WinBar.Eval
+            endif
+        endfor
+        call win_gotoid(curwinid)
+        let s:winbar_winids = []
+    endif
+
+endfunction
+
+function! neodebug#InstallPopupMenu()
+        if !exists('g:neodbg_popup') || g:neodbg_popup != 0
+            let s:saved_mousemodel = &mousemodel
+            let &mousemodel = 'popup_setpos'
+            an 1.200 PopUp.-SEP3-	<Nop>
+            an 1.210 PopUp.Set\ breakpoint	:Break<CR>
+            an 1.220 PopUp.Clear\ breakpoint	:Clear<CR>
+            an 1.230 PopUp.Evaluate		:Evaluate<CR>
+        endif
+endfunction
+
+function! neodebug#DeletePopupMenu()
+    if has('menu')
+        if exists('s:saved_mousemodel')
+            let &mousemodel = s:saved_mousemodel
+            unlet s:saved_mousemodel
+            aunmenu PopUp.-SEP3-
+            aunmenu PopUp.Set\ breakpoint
+            aunmenu PopUp.Clear\ breakpoint
+            aunmenu PopUp.Evaluate
+        endif
+    endif
+endfunction
+
 " vim: set foldmethod=marker 

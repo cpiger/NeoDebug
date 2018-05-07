@@ -176,8 +176,8 @@ function! NeoDebug(cmd, ...)  " [mode]
     " goto frame
     " #0  factor (n=1, r=0x22fe48) at factor/factor.c:4
     " #1  0x00000000004015e2 in main (argc=1, argv=0x5b3480) at sample.c:12
-    if s:MyMatch(usercmd, '\v^#(\d+)')  && s:neodbg_is_debugging
-        let usercmd = "frame " . s:match[1]
+    if s:NeoDebugMatch(usercmd, '\v^#(\d+)')  && s:neodbg_is_debugging
+        let usercmd = "frame " . s:neodbg_match[1]
         call NeoDebugSendCommand(usercmd)
         return
     endif
@@ -186,8 +186,8 @@ function! NeoDebug(cmd, ...)  " [mode]
     " Id   Target Id         Frame 
     " 2    Thread 83608.0x14dd0 0x00000000773c22da in ntdll!RtlInitString () from C:\\windows\\SYSTEM32\tdll.dll
     " 1    Thread 83608.0x1535c factor (n=1, r=0x22fe48) at factor/factor.c:5
-    if s:MyMatch(usercmd, '\v^\s+(\d+)\s+Thread ') && s:neodbg_is_debugging
-        let usercmd = "-thread-select " . s:match[1]
+    if s:NeoDebugMatch(usercmd, '\v^\s+(\d+)\s+Thread ') && s:neodbg_is_debugging
+        let usercmd = "-thread-select " . s:neodbg_match[1]
         call NeoDebugSendCommand(usercmd)
         call NeoDebugSendCommand("bt")
         return
@@ -197,8 +197,8 @@ function! NeoDebug(cmd, ...)  " [mode]
     " 1       breakpoint     keep y   0x00000000004015c4 in main at sample.c:8
     " 2       breakpoint     keep y   0x00000000004015d4 in main at sample.c:12
     " 3       breakpoint     keep y   0x00000000004015e2 in main at sample.c:13
-    if s:MyMatch(usercmd, '\v<at %(0x\S+ )?(..[^:]*):(\d+)') || s:MyMatch(usercmd, '\vfile ([^,]+), line (\d+)') || s:MyMatch(usercmd, '\v\((..[^:]*):(\d+)\)')
-        call s:NeoDebugGotoFile(s:match[1], s:match[2])
+    if s:NeoDebugMatch(usercmd, '\v<at %(0x\S+ )?(..[^:]*):(\d+)') || s:NeoDebugMatch(usercmd, '\vfile ([^,]+), line (\d+)') || s:NeoDebugMatch(usercmd, '\v\((..[^:]*):(\d+)\)')
+        call s:NeoDebugGotoFile(s:neodbg_match[1], s:neodbg_match[2])
         return
     endif
 
@@ -215,13 +215,6 @@ function! NeoDebug(cmd, ...)  " [mode]
     let s:cur_winnr = bufwinnr("%")
     call NeoDebugSendCommand(usercmd, mode)
 endf
-
-function! s:DeleteSedTempfile()
-    let sed_tmp = fnamemodify(s:neodbg_exrc . s:neodbg_port, ":p:h")
-    if s:ismswin
-        silent exec '!start /b del /f '. sed_tmp . '/sed*'   
-    endif
-endfunction
 
 function! NeoDebugStop(cmd)
 	if !s:neodbg_running
@@ -347,7 +340,7 @@ func s:NeoDebugEnd(job, status)
 
     call win_gotoid(s:startwin)
     let &signcolumn = s:startsigncolumn
-    call NeoDebugDeleteCommandsHotkeys()
+    call NeoDebugRestoreCommandsShotcut()
 
     call win_gotoid(curwinid)
     if s:save_columns > 0
@@ -365,6 +358,7 @@ func s:NeoDebugEnd(job, status)
     endif
 
     au! NeoDebugAutoCMD
+    call feedkeys("\<ESC>")
 endfunc
 
 function! s:NvimHandleOutput(id, data, event)
@@ -637,7 +631,7 @@ func s:HandleOutput(chan, msg)
             starti!
             redraw
             if cur_mode != "i"
-                stopi
+                call feedkeys("\<ESC>")
             endif
         endif
 
@@ -766,10 +760,10 @@ fun! NeoDebugComplete(findstart, base)
     endif
 endfun
 
-let s:match = []
-function! s:MyMatch(expr, pat)
-    let s:match = matchlist(a:expr, a:pat)
-    return len(s:match) >0
+let s:neodbg_match = []
+function! s:NeoDebugMatch(expr, pat)
+    let s:neodbg_match = matchlist(a:expr, a:pat)
+    return len(s:neodbg_match) >0
 endf
 " if the value is a pointer ( var = 0x...), expand it by "NeoDebug p *var"
 " e.g. $11 = (CDBMEnv *) 0x387f6d0
@@ -779,10 +773,10 @@ endf
 "  ...
 " }
 function! NeoDebugExpandPointerExpr()
-    if ! s:MyMatch(getline('.'), '\v((\$|\w)+) \=.{-0,} 0x')
+    if ! s:NeoDebugMatch(getline('.'), '\v((\$|\w)+) \=.{-0,} 0x')
         return 0
     endif
-    let cmd = s:match[1]
+    let cmd = s:neodbg_match[1]
     let lastln = line('.')
     while 1
         normal [z
@@ -791,7 +785,7 @@ function! NeoDebugExpandPointerExpr()
         endif
         let lastln = line('.')
 
-        if ! s:MyMatch(getline('.'), '\v(([<>$]|\w)+) \=')
+        if ! s:NeoDebugMatch(getline('.'), '\v(([<>$]|\w)+) \=')
             return 0
         endif
         " '<...>' means the base class. Just ignore it. Example:
@@ -801,8 +795,8 @@ function! NeoDebugExpandPointerExpr()
         "     m_pEnv = 0x378de60
         "   }, <No data fields>}
 
-        if s:match[1][0:0] != '<' 
-            let cmd = s:match[1] . '.' . cmd
+        if s:neodbg_match[1][0:0] != '<' 
+            let cmd = s:neodbg_match[1] . '.' . cmd
         endif
     endwhile 
     call NeoDebugSendCommand("p *" . cmd)
@@ -815,226 +809,23 @@ function! NeoDebugExpandPointerExpr()
     return 1
 endf
 
-" Install commands in the current window to control the debugger.
-func NeoDebugInstallCommandsHotkeys()
-
-    command Break call s:SetBreakpoint()
-    command Clear call s:ClearBreakpoint()
-    command Step call NeoDebugSendCommand('-exec-step')
-    command Over call NeoDebugSendCommand('-exec-next')
-    command Finish call NeoDebugSendCommand('-exec-finish')
-    command -nargs=* Run call s:Run(<q-args>)
-    command -nargs=* Arguments call NeoDebugSendCommand('-exec-arguments ' . <q-args>)
-    command Stop call NeoDebugSendCommand('-exec-interrupt')
-    command Continue call NeoDebugSendCommand('-exec-continue')
-    command -range -nargs=* Evaluate call s:Evaluate(<range>, <q-args>)
-    command Winbar call NeoDebugInstallWinbar()
-
-    " TODO: can the K mapping be restored?
-    nnoremap K :Evaluate<CR>
-
-    if has('menu') && &mouse != ''
-        call NeoDebugInstallWinbar()
-
-        if !exists('g:neodbg_popup') || g:neodbg_popup != 0
-            let s:saved_mousemodel = &mousemodel
-            let &mousemodel = 'popup_setpos'
-            an 1.200 PopUp.-SEP3-	<Nop>
-            an 1.210 PopUp.Set\ breakpoint	:Break<CR>
-            an 1.220 PopUp.Clear\ breakpoint	:Clear<CR>
-            an 1.230 PopUp.Evaluate		:Evaluate<CR>
-        endif
-    endif
-
-
-    hi NeoDbgBreakPoint    guibg=darkblue  ctermbg=darkblue term=reverse 
-    hi NeoDbgDisabledBreak guibg=lightblue guifg=black ctermbg=lightblue ctermfg=black
-    hi NeoDbgPC            guibg=Orange    guifg=black gui=bold ctermbg=Yellow ctermfg=black
-
-    " hi NeoDbgBreakPoint guibg=darkred guifg=white ctermbg=darkred ctermfg=white
-    " hi NeoDbgDisabledBreak guibg=lightred guifg=black ctermbg=lightred ctermfg=black
-
-    sign define NeoDebugBP  linehl=NeoDbgBreakPoint    text=B> texthl=NeoDbgBreakPoint
-    sign define NeoDebugDBP linehl=NeoDbgDisabledBreak text=b> texthl=NeoDbgDisabledBreak
-    sign define NeoDebugPC  linehl=NeoDbgPC            text=>> texthl=NeoDbgPC
-
-    " highlight NeoDebugGoto guifg=Blue
-    hi def link NeoDebugKey Statement
-    hi def link NeoDebugHiLn Statement
-    hi def link NeoDebugGoto Underlined
-    hi def link NeoDebugPtr Underlined
-    hi def link NeoDebugFrame LineNr
-    hi def link NeoDebugCmd Macro
-    " syntax
-    syn keyword NeoDebugKey Function Breakpoint Catchpoint 
-    syn match NeoDebugFrame /\v^#\d+ .*/ contains=NeoDebugGoto
-    syn match NeoDebugGoto /\v<at [^()]+:\d+|file .+, line \d+/
-    syn match NeoDebugCmd /^(gdb).*/
-    syn match NeoDebugPtr /\v(^|\s+)\zs\$?\w+ \=.{-0,} 0x\w+/
-    " highlight the whole line for 
-    " returns for info threads | info break | finish | watchpoint
-    syn match NeoDebugHiLn /\v^\s*(Id\s+Target Id|Num\s+Type|Value returned is|(Old|New) value =|Hardware watchpoint).*$/
-
-    " syntax for perldb
-    syn match NeoDebugCmd /^\s*DB<.*/
-    "	syn match NeoDebugFrame /\v^#\d+ .*/ contains=NeoDebugGoto
-    syn match NeoDebugGoto /\v from file ['`].+' line \d+/
-    syn match NeoDebugGoto /\v at ([^ ]+) line (\d+)/
-    syn match NeoDebugGoto /\v at \(eval \d+\)..[^:]+:\d+/
-
-
-    " shortcut in NeoDebug window
-
-    call neodebug#CustomConsoleKey()
-
-    noremap <buffer><silent>? :call neodebug#ToggleHelp()<cr>
-
-    inoremap <expr><buffer> <silent> <c-p>  "\<c-x><c-l>"
-    inoremap <expr><buffer> <silent> <c-r>  "\<c-x><c-n>"
-
-    inoremap <expr><buffer><silent> <TAB>    pumvisible() ? "\<C-n>" : "\<c-x><c-u>"
-    inoremap <expr><buffer><silent> <S-TAB>  pumvisible() ? "\<C-p>" : "\<c-x><c-u>"
-    noremap <buffer><silent> <Tab> ""
-    noremap <buffer><silent> <S-Tab> ""
-
-    noremap <buffer><silent> <ESC> :call neodebug#CloseConsoleWindow()<CR>
-
-    inoremap <expr><buffer> <silent> <CR> pumvisible() ? "\<c-y><c-o>:call NeoDebug(getline('.'), 'i')<cr>" : "<c-o>:call NeoDebug(getline('.'), 'i')<cr>"
-    " inoremap <buffer> <silent> <C-CR> :<c-o>:call NeoDebug("", 'i')<cr>
-
-    nnoremap <buffer> <silent> <CR> :call NeoDebug(getline('.'), 'n')<cr>
-    nmap <buffer> <silent> <2-LeftMouse> <cr>
-
-    nmap <silent> <F9>	         :call <SID>ToggleBreakpoint()<CR>
-    map! <silent> <F9>	         <c-o>:call <SID>ToggleBreakpoint()<CR>
-
-    nmap <silent> <Leader>ju	 :call <SID>Jump()<CR>
-    nmap <silent> <C-S-F10>		 :call <SID>Jump()<CR>
-    nmap <silent> <C-F10>        :call <SID>RunToCursur()<CR>
-    map! <silent> <C-S-F10>		 <c-o>:call <SID>Jump()<CR>
-    map! <silent> <C-F10>        <c-o>:call <SID>RunToCursur()<CR>
-    nmap <silent> <F6>           :call neodebug#ToggleConsoleWindow()<CR>
-    imap <silent> <F6>           <c-o>:call neodebug#ToggleConsoleWindow()<CR>
-    nmap <silent> <C-P>	         :NeoDebug p <C-R><C-W><CR>
-    vmap <silent> <C-P>	         y:NeoDebug p <C-R>0<CR>
-    nmap <silent> <Leader>pr	 :NeoDebug p <C-R><C-W><CR>
-    vmap <silent> <Leader>pr	 y:NeoDebug p <C-R>0<CR>
-    nmap <silent> <Leader>bt	 :NeoDebug bt<CR>
-
-    nmap <silent> <F5>    :NeoDebug c<cr>
-    nmap <silent> <S-F5>  :NeoDebug k<cr>
-    nmap <silent> <F10>   :NeoDebug n<cr>
-    nmap <silent> <F11>   :NeoDebug s<cr>
-    nmap <silent> <S-F11> :NeoDebug finish<cr>
-    nmap <silent> <c-c> :NeoDebugStop<cr>
-
-    map! <silent> <F5>    <c-o>:NeoDebug c<cr>
-    map! <silent> <S-F5>  <c-o>:NeoDebug k<cr>
-    map! <silent> <F10>   <c-o>:NeoDebug n<cr>
-    map! <silent> <F11>   <c-o>:NeoDebug s<cr>
-    map! <silent> <S-F11> <c-o>:NeoDebug finish<cr>
-
-    amenu NeoDebug.Run/Continue<tab>F5 					:NeoDebug c<CR>
-    amenu NeoDebug.Step\ into<tab>F11					:NeoDebug s<CR>
-    amenu NeoDebug.Next<tab>F10							:NeoDebug n<CR>
-    amenu NeoDebug.Step\ out<tab>Shift-F11				:NeoDebug finish<CR>
-    amenu NeoDebug.Run\ to\ cursor<tab>Ctrl-F10			:call <SID>RunToCursur()<CR>
-    amenu NeoDebug.Stop\ debugging\ (Kill)<tab>Shift-F5	:NeoDebug k<CR>
-    amenu NeoDebug.-sep1- :
-
-    amenu NeoDebug.Show\ callstack<tab>\\bt				:call NeoDebug("where")<CR>
-    amenu NeoDebug.Set\ next\ statement\ (Jump)<tab>Ctrl-Shift-F10\ or\ \\ju 	:call <SID>Jump()<CR>
-    amenu NeoDebug.Top\ frame 						:call NeoDebug("frame 0")<CR>
-    amenu NeoDebug.Callstack\ up 					:call NeoDebug("up")<CR>
-    amenu NeoDebug.Callstack\ down 					:call NeoDebug("down")<CR>
-    amenu NeoDebug.-sep2- :
-
-    amenu NeoDebug.Preview\ variable<tab>Ctrl-P		:NeoDebug p <C-R><C-W><CR> 
-    amenu NeoDebug.Print\ variable<tab>\\pr			:NeoDebug p <C-R><C-W><CR> 
-    amenu NeoDebug.Show\ breakpoints 				:NeoDebug info breakpoints<CR>
-    amenu NeoDebug.Show\ locals 					:NeoDebug info locals<CR>
-    amenu NeoDebug.Show\ args 						:NeoDebug info args<CR>
-    amenu NeoDebug.Quit			 					:NeoDebug q<CR>
-
-
-endfunc
-
-let s:winbar_winids = []
-
-" Install the window toolbar in the current window.
-func NeoDebugInstallWinbar()
-    nnoremenu WinBar.Step   :NeoDebug s<CR>
-    nnoremenu WinBar.Next   :NeoDebug n<CR>
-    nnoremenu WinBar.Finish :NeoDebug finish<CR>
-    nnoremenu WinBar.Cont   :NeoDebug c<CR>
-    nnoremenu WinBar.Stop   :NeoDebug k<CR>
-    nnoremenu WinBar.Eval   :Evaluate<CR>
-    call add(s:winbar_winids, win_getid(winnr()))
-endfunc
-
 " Delete installed debugger commands in the current window.
-func NeoDebugDeleteCommandsHotkeys()
-    delcommand Break
-    delcommand Clear
-    delcommand Step
-    delcommand Over
-    delcommand Finish
-    delcommand Run
-    delcommand Arguments
-    delcommand Stop
-    delcommand Continue
-    delcommand Evaluate
-    delcommand Winbar
-
-    nunmap K
-
-    if has('menu')
-        " Remove the WinBar entries from all windows where it was added.
-        let curwinid = win_getid(winnr())
-        for winid in s:winbar_winids
-            if win_gotoid(winid)
-                aunmenu WinBar.Step
-                aunmenu WinBar.Next
-                aunmenu WinBar.Finish
-                aunmenu WinBar.Cont
-                aunmenu WinBar.Stop
-                aunmenu WinBar.Eval
-            endif
-        endfor
-        call win_gotoid(curwinid)
-        let s:winbar_winids = []
-
-        if exists('s:saved_mousemodel')
-            let &mousemodel = s:saved_mousemodel
-            unlet s:saved_mousemodel
-            aunmenu PopUp.-SEP3-
-            aunmenu PopUp.Set\ breakpoint
-            aunmenu PopUp.Clear\ breakpoint
-            aunmenu PopUp.Evaluate
-        endif
-    endif
+func NeoDebugRestoreCommandsShotcut()
+    call neodebug#DeleteCommand()
+    call neodebug#DeleteMenu()
+    call neodebug#DeleteWinbar()
+    call neodebug#DeletePopupMenu()
 
     exe 'sign unplace ' . s:pc_id
     for key in keys(s:breakpoints)
         exe 'sign unplace ' . (s:break_id + key)
     endfor
-    sign undefine NeoDebugPC
-    sign undefine NeoDebugBP
+
+    call  neodebug#UnsetWindowSytaxHilight()
+
     "unlet s:breakpoints
 
-    unmap <F9>
-    unmap <Leader>ju
-    unmap <C-S-F10>
-    unmap <C-F10>
-    unmap <C-P>
-    unmap <Leader>pr
-    unmap <Leader>bt
-
-    unmap <F5>
-    unmap <S-F5>
-    unmap <F10>
-    unmap <F11>
-    unmap <S-F11>
+    call neodebug#DeleteShotcut()
 
     if s:ismswin
         " so _exrc
@@ -1141,7 +932,7 @@ func s:BufferUnload()
 endfunc
 
 
-func s:SetBreakpoint()
+func NeoDebugSetBreakpoint()
     " Setting a breakpoint may not work while the program is running.
     " Interrupt to make it work.
     let do_continue = 0
@@ -1159,7 +950,7 @@ func s:SetBreakpoint()
     endif
 endfunc
 
-func s:ClearBreakpoint()
+func NeoDebugClearBreakpoint()
     call win_gotoid(s:startwin)
     let fname = fnameescape(expand('%:p'))
     let lnum = line('.')
@@ -1178,7 +969,7 @@ func s:ClearBreakpoint()
     endfor
 endfunc
 
-func s:ToggleBreakpoint()
+func NeoDebugToggleBreakpoint()
     call win_gotoid(s:startwin)
     let fname = fnameescape(expand('%:p'))
     let lnum = line('.')
@@ -1195,17 +986,17 @@ func s:ToggleBreakpoint()
             return
         endif
     endfor
-    call s:SetBreakpoint()
+    call NeoDebugSetBreakpoint()
 endfunc
 
-func s:Run(args)
+func NeoDebugRun(args)
     if a:args != ''
         call NeoDebugSendCommand('-exec-arguments ' . a:args)
     endif
     call NeoDebugSendCommand('-exec-run')
 endfunc
 
-func s:Evaluate(range, arg)
+func NeoDebugEvaluate(range, arg)
     if a:arg != ''
         let expr = a:arg
     elseif a:range == 2
@@ -1435,7 +1226,7 @@ function! s:CursorPos()
     return s:NeoDebug_bpkey(file, line)
 endf
 
-function! s:Jump()
+function! NeoDebugJump()
     call win_gotoid(s:startwin)
     let key = s:CursorPos()
     "	call NeoDebug("@tb ".key." ; ju ".key)
@@ -1443,7 +1234,7 @@ function! s:Jump()
     call NeoDebug("ju ".key)
 endf
 
-function! s:RunToCursur()
+function! NeoDebugRunToCursur()
     call win_gotoid(s:startwin)
     let key = s:CursorPos()
     call NeoDebug("tb ".key)
