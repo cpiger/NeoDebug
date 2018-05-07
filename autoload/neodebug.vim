@@ -46,7 +46,7 @@ function neodebug#ToggleHelp()
     let s:help_open = !s:help_open
     silent exec '1,' . len(s:help_text) . 'd _'
     call s:UpdateHelpText()
-    silent call append ( 0, s:help_text )
+    silent call append( 0, s:help_text )
     silent keepjumps normal! gg
 endfunction
 

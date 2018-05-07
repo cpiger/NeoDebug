@@ -278,6 +278,8 @@ func s:NeoDebugStart(cmd)
     call NeoDebugSendCommand('set mi-async on')
     if s:ismswin
         call NeoDebugSendCommand('set new-console on')
+    elseif s:isunix
+        call NeoDebugSendCommand('show inferior-tty')
     endif
     call NeoDebugSendCommand('set print pretty on')
     call NeoDebugSendCommand('set breakpoint pending on')
@@ -584,6 +586,9 @@ func s:HandleOutput(chan, msg)
                 " call append(line("$"), s:appendline)
                 if neodbg_winnr != -1
                     call append(line("$"), s:appendline)
+                    if s:isunix && -1 != stridx(s:appendline, "Terminal for future runs of program being debugged is")
+                        call append(line('$'), "Please use gdb's tty command to redirect Your Program's Input and Output.")
+                    endif
                 else
                     call add(g:append_messages, s:appendline)
                 endif
