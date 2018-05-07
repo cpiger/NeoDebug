@@ -27,6 +27,9 @@ endif
 if !exists('g:neodbg_openbreaks_default')
     let g:neodbg_openbreaks_default    = 0
 endif
+if !exists('g:neodbg_opendisas_default')
+    let g:neodbg_opendisas_default    = 0
+endif
 if !exists('g:neodbg_openstacks_default')
     let g:neodbg_openstacks_default    = 0
 endif
@@ -47,6 +50,10 @@ let g:neodbg_prompt = '(gdb) '
 let g:neodbg_breakpoints_name = "__Breakpoints__"
 let g:neodbg_breakpoints_width = 50
 let g:neodbg_breakpoints_height = 25
+
+let g:neodbg_disas_name = "__Disassemble__"
+let g:neodbg_disas_width = 50
+let g:neodbg_disas_height = 25
 
 let g:neodbg_locals_name = "__Locals__"
 let g:neodbg_locals_width = 50
@@ -69,6 +76,7 @@ let g:neodbg_registers_win = 0
 let g:neodbg_stackframes_win = 0
 let g:neodbg_threads_win = 0
 let g:neodbg_breakpoints_win = 0
+let g:neodbg_disas_win = 0
 
 
 let s:neodbg_chan = 0
@@ -123,7 +131,11 @@ function! NeoDebug(cmd, ...)  " [mode]
         call neodebug#OpenBreakpoints()
         let g:neodbg_breakpoints_win = win_getid(winnr())
 
+        call neodebug#OpenDisas()
+        let g:neodbg_disas_win = win_getid(winnr())
 
+
+        call neodebug#CloseDisasWindow()
         call neodebug#CloseBreakpointsWindow()
         call neodebug#CloseThreadsWindow()
         call neodebug#CloseStackFramesWindow()
@@ -216,7 +228,7 @@ function! NeoDebug(cmd, ...)  " [mode]
     endif
 
     call NeoDebugSendCommand(usercmd, mode)
-endf
+endfunction
 
 function! NeoDebugStop(cmd)
     " echomsg "s:neodbg_running".s:neodbg_running
@@ -326,6 +338,8 @@ func s:NeoDebugEnd(job, status)
     " If neodebug console window is open then close it.
     call neodebug#GotoBreakpointsWindow()
     quit
+    call neodebug#GotoDisasWindow()
+    quit
     call neodebug#GotoRegistersWindow()
     quit
     call neodebug#GotoStackFramesWindow()
@@ -342,6 +356,7 @@ func s:NeoDebugEnd(job, status)
     exe 'bwipe! ' . bufnr(g:neodbg_stackframes_name)
     exe 'bwipe! ' . bufnr(g:neodbg_threads_name)
     exe 'bwipe! ' . bufnr(g:neodbg_breakpoints_name)
+    exe 'bwipe! ' . bufnr(g:neodbg_disas_name)
     exe 'bwipe! ' . bufnr(g:neodbg_console_name)
 
     let curwinid = win_getid(winnr())
@@ -366,6 +381,7 @@ func s:NeoDebugEnd(job, status)
     endif
 
     au! NeoDebugAutoCMD
+    "back to normal
     call feedkeys("\<ESC>")
 endfunc
 
@@ -437,7 +453,7 @@ func s:HandleOutput(chan, msg)
 
 
     " Handle update window
-    if  (s:mode == 'u') && ( "info breakpoints" == strpart(a:msg, 2, strlen("info breakpoints")) || "info locals" == strpart(a:msg, 2, strlen("info locals")) || "backtrace" == strpart(a:msg, 2, strlen("backtrace")) || "info threads" == strpart(a:msg, 2, strlen("info threads"))|| "info registers" == strpart(a:msg, 2, strlen("info registers")))
+    if  (s:mode == 'u') && ( "info breakpoints" == strpart(a:msg, 2, strlen("info breakpoints")) || "disassemble" == strpart(a:msg, 2, strlen("disassemble")) || "info locals" == strpart(a:msg, 2, strlen("info locals")) || "backtrace" == strpart(a:msg, 2, strlen("backtrace")) || "info threads" == strpart(a:msg, 2, strlen("info threads"))|| "info registers" == strpart(a:msg, 2, strlen("info registers")))
         let s:updateinfo_skip_flag = 1
     endif
 
@@ -465,8 +481,13 @@ func s:HandleOutput(chan, msg)
                 call neodebug#GotoBreakpointsWindow()
             endif
 
+            if "disassemble" == strpart(s:comm_msg, 2, strlen("disassemble"))
+                call neodebug#GotoDisasWindow()
+            endif
+
             if updateinfo_line =~ '^\~"'  
                 let updateinfo_line = substitute(updateinfo_line, '\~"\\t', "\~\"\t\t", 'g')
+                let updateinfo_line = substitute(updateinfo_line, ':\\t', ":\t\t", 'g')
                 let updateinfo_line = substitute(updateinfo_line, '\\"', '"', 'g')
                 let updateinfo_line = substitute(updateinfo_line, '\\\\', '\\', 'g')
                 let s:appendline .= strpart(updateinfo_line, 2, strlen(updateinfo_line)-3)
@@ -521,6 +542,12 @@ func s:HandleOutput(chan, msg)
         return
     endif
 
+    if  "disassemble" == strpart(s:comm_msg, 2, strlen("disassemble"))  && ( s:comm_msg =~  g:neodbg_prompt)
+        let s:updateinfo_skip_flag = 0
+        let s:comm_msg = ''
+        return
+    endif
+
 
     let debugger_line = a:msg
 
@@ -568,6 +595,7 @@ func s:HandleOutput(chan, msg)
             "fix win32 gdb D:\\path\\path\\file
         elseif debugger_line =~ '^&"' && s:usercmd != substitute(strpart(debugger_line, 2 , strlen(debugger_line)-5), '\\\\', '\\', 'g')
             let debugger_line = substitute(debugger_line, '\~"\\t', "\~\"\t\t", 'g')
+            let debugger_line = substitute(debugger_line, ':\\t', ":\t\t", 'g')
             let debugger_line = substitute(debugger_line, '\\"', '"', 'g')
             let debugger_line = substitute(debugger_line, '\\\\', '\\', 'g')
             let s:append_msg .= strpart(debugger_line, 2, strlen(debugger_line)-3)
@@ -596,6 +624,7 @@ func s:HandleOutput(chan, msg)
             endif
             " echomsg 's:neodbg_is_debugging'. s:neodbg_is_debugging
             let debugger_line = substitute(debugger_line, '\~"\\t', "\~\"\t\t", 'g')
+            let debugger_line = substitute(debugger_line, ':\\t', ":\t\t", 'g')
             let debugger_line = substitute(debugger_line, '\\"', '"', 'g')
             let debugger_line = substitute(debugger_line, '\\\\', '\\', 'g')
             let s:appendline .= strpart(debugger_line, 2, strlen(debugger_line)-3)
@@ -731,7 +760,7 @@ func! NeoDebugBalloonExpr()
 endfunc
 
 let s:neodbg_complete_flag = 0
-fun! NeoDebugComplete(findstart, base)
+function! NeoDebugComplete(findstart, base)
 
     if a:findstart
 
@@ -785,7 +814,7 @@ let s:neodbg_match = []
 function! s:NeoDebugMatch(expr, pat)
     let s:neodbg_match = matchlist(a:expr, a:pat)
     return len(s:neodbg_match) >0
-endf
+endfunction
 " if the value is a pointer ( var = 0x...), expand it by "NeoDebug p *var"
 " e.g. $11 = (CDBMEnv *) 0x387f6d0
 " e.g.  
@@ -828,7 +857,7 @@ function! NeoDebugExpandPointerExpr()
         foldclose!
     endif
     return 1
-endf
+endfunction
 
 " Delete installed debugger commands in the current window.
 func NeoDebugRestoreCommandsShotcut()
@@ -1085,6 +1114,7 @@ func s:HandleCursor(msg)
         call neodebug#UpdateRegisters()
         call neodebug#UpdateStackFrames()
         call neodebug#UpdateThreads()
+        call neodebug#UpdateDisas()
     endif
 
     if win_gotoid(s:startwin)
@@ -1209,7 +1239,7 @@ endfunc
 " TODO 
 function! s:NeoDebug_bpkey(file, line)
     return a:file . ":" . a:line
-endf
+endfunction
 
 function! s:NeoDebugGotoFile(fname, lnum)
     let fname = a:fname
@@ -1247,7 +1277,7 @@ function! s:CursorPos()
     let file = expand("%:t")
     let line = line(".")
     return s:NeoDebug_bpkey(file, line)
-endf
+endfunction
 
 function! NeoDebugJump()
     call win_gotoid(s:startwin)
@@ -1255,14 +1285,14 @@ function! NeoDebugJump()
     "	call NeoDebug("@tb ".key." ; ju ".key)
     "	call NeoDebug("set $rbp1=$rbp; set $rsp1=$rsp; @tb ".key." ; ju ".key . "; set $rsp=$rsp1; set $rbp=$rbp1")
     call NeoDebug("ju ".key)
-endf
+endfunction
 
 function! NeoDebugRunToCursur()
     call win_gotoid(s:startwin)
     let key = s:CursorPos()
     call NeoDebug("tb ".key)
     call NeoDebug("c")
-endf
+endfunction
 
 function! NeoDebugGotoStartWin()
     call win_gotoid(s:startwin)
@@ -1277,6 +1307,7 @@ command!  OpenRegisters :call neodebug#UpdateRegistersWindow()
 command!  OpenStacks :call neodebug#UpdateStackFramesWindow()
 command!  OpenThreads :call neodebug#UpdateThreadsWindow()
 command!  OpenBreaks :call neodebug#UpdateBreakpointsWindow()
+command!  OpenDisas :call neodebug#UpdateDisasWindow()
 
 command!  CloseConsole :call neodebug#CloseConsole()
 command!  CloseLocals :call neodebug#CloseLocals()
@@ -1284,5 +1315,6 @@ command!  CloseRegisters :call neodebug#CloseRegisters()
 command!  CloseStacks :call neodebug#CloseStackFrames()
 command!  CloseThreads :call neodebug#CloseThreads()
 command!  CloseBreaks :call neodebug#CloseBreakpoints()
+command!  CloseDisas :call neodebug#CloseDisas()
 
 " vim: set foldmethod=marker 

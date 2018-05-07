@@ -80,12 +80,14 @@ See Screenshot.
     :OpenStacks        "open  [backtrace] window
     :OpenThreads       "open  [info threads] window
     :OpenBreaks        "open  [info breakpoints] window
+    :OpenDisas         "open  [disassemble] window
 
     :CloseLocals       "close [info locals] window
     :CloseRegisters    "close [info registers] window
     :CloseStacks       "close [backtrace] window
     :CloseThreads      "close [info threads] window
     :CloseBreaks       "close [info breakpoints] window
+    :CloseDisas        "close [disassemble] window
 
 
 The following shortcuts is applied that is similar to MSVC: 

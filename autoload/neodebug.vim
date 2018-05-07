@@ -150,7 +150,7 @@ function! neodebug#GotoConsoleWindow()
         let neodbg_winnr = bufwinnr(g:neodbg_console_name)
     endif
     exec neodbg_winnr . "wincmd w"
-endf
+endfunction
 
 function s:GotoInput()
     " exec "InsertLeave"
@@ -216,7 +216,7 @@ function! s:IsModifiable()
     else
         return 0
     endif
-endf
+endfunction
 
 function! s:IsModifiablex()
     let pos = getpos(".")  
@@ -227,7 +227,7 @@ function! s:IsModifiablex()
     else
         return 0
     endif
-endf
+endfunction
 function! s:IsModifiableX()
     let pos = getpos(".")  
     let curline = pos[1]
@@ -237,8 +237,8 @@ function! s:IsModifiableX()
     else
         return 0
     endif
-endf
-fun! s:NeoDebugKeyi()
+endfunction
+function! s:NeoDebugKeyi()
     let pos = getpos(".")  
     let curline = pos[1]
     let curcol = pos[2]
@@ -251,9 +251,9 @@ fun! s:NeoDebugKeyi()
     else
         silent call s:GotoInput()
     endif
-endf
+endfunction
 
-fun! s:NeoDebugKeyI()
+function! s:NeoDebugKeyI()
     let pos = getpos(".")  
     let curline = pos[1]
     let curcol = pos[2]
@@ -264,9 +264,9 @@ fun! s:NeoDebugKeyI()
     else
         silent call s:GotoInput()
     endif
-endf
+endfunction
 
-fun! s:NeoDebugKeya()
+function! s:NeoDebugKeya()
     let linecon = getline("$")
     let pos = getpos(".")  
     let curline = pos[1]
@@ -290,9 +290,9 @@ fun! s:NeoDebugKeya()
     else
         silent call s:GotoInput()
     endif
-endf
+endfunction
 
-fun! s:NeoDebugKeyA()
+function! s:NeoDebugKeyA()
     let pos = getpos(".")  
     let curline = pos[1]
     let curcol = pos[2]
@@ -301,7 +301,7 @@ fun! s:NeoDebugKeyA()
     else
         silent call s:GotoInput()
     endif
-endf
+endfunction
 
 function s:NeoDebugKeyo()
     let linecon = getline("$")
@@ -405,6 +405,7 @@ function! neodebug#GotoLocalsWindow()
     let neodbg_winnr_thread = bufwinnr(g:neodbg_threads_name)
 
     let neodbg_winnr_break = bufwinnr(g:neodbg_breakpoints_name)
+    let neodbg_winnr_disas = bufwinnr(g:neodbg_disas_name)
 
     if neodbg_winnr == -1
         if neodbg_winnr_register == -1
@@ -417,6 +418,9 @@ function! neodebug#GotoLocalsWindow()
                 call neodebug#OpenLocalsWindow('h')
             elseif neodbg_winnr_break != -1
                 call neodebug#GotoBreakpointsWindow()
+                call neodebug#OpenLocalsWindow('h')
+            elseif neodbg_winnr_disas != -1
+                call neodebug#GotoDisasWindow()
                 call neodebug#OpenLocalsWindow('h')
             else
                 call neodebug#OpenLocals()
@@ -433,7 +437,7 @@ function! neodebug#GotoLocalsWindow()
     endif
     exec neodbg_winnr . "wincmd w"
     " exec "wincmd ="
-endf
+endfunction
 
 function! neodebug#OpenRegisters()
 
@@ -508,6 +512,7 @@ function! neodebug#GotoRegistersWindow()
     let neodbg_winnr_thread = bufwinnr(g:neodbg_threads_name)
 
     let neodbg_winnr_break = bufwinnr(g:neodbg_breakpoints_name)
+    let neodbg_winnr_disas = bufwinnr(g:neodbg_disas_name)
 
     if neodbg_winnr == -1
 
@@ -521,6 +526,9 @@ function! neodebug#GotoRegistersWindow()
                 call neodebug#OpenRegistersWindow('h')
             elseif neodbg_winnr_break != -1
                 call neodebug#GotoBreakpointsWindow()
+                call neodebug#OpenRegistersWindow('h')
+            elseif neodbg_winnr_disas != -1
+                call neodebug#GotoDisasWindow()
                 call neodebug#OpenRegistersWindow('h')
             else
                 call neodebug#OpenRegisters()
@@ -536,7 +544,7 @@ function! neodebug#GotoRegistersWindow()
     endif
     exec neodbg_winnr . "wincmd w"
     " exec "wincmd ="
-endf
+endfunction
 
 
 function! neodebug#OpenStackFrames()
@@ -616,6 +624,7 @@ function! neodebug#GotoStackFramesWindow()
     let neodbg_winnr_local = bufwinnr(g:neodbg_locals_name)
 
     let neodbg_winnr_break = bufwinnr(g:neodbg_breakpoints_name)
+    let neodbg_winnr_disas = bufwinnr(g:neodbg_disas_name)
 
     if neodbg_winnr == -1
         if neodbg_winnr_thread == -1
@@ -628,6 +637,9 @@ function! neodebug#GotoStackFramesWindow()
                 call neodebug#OpenStackFramesWindow('h')
             elseif neodbg_winnr_break != -1
                 call neodebug#GotoBreakpointsWindow()
+                call neodebug#OpenStackFramesWindow('h')
+            elseif neodbg_winnr_disas != -1
+                call neodebug#GotoDisasWindow()
                 call neodebug#OpenStackFramesWindow('h')
             else
                 call neodebug#OpenStackFrames()
@@ -643,7 +655,7 @@ function! neodebug#GotoStackFramesWindow()
     endif
     exec neodbg_winnr . "wincmd w"
     " exec "wincmd ="
-endf
+endfunction
 
 
 function! neodebug#OpenThreads()
@@ -720,6 +732,7 @@ function! neodebug#GotoThreadsWindow()
     let neodbg_winnr_local = bufwinnr(g:neodbg_locals_name)
 
     let neodbg_winnr_break = bufwinnr(g:neodbg_breakpoints_name)
+    let neodbg_winnr_disas = bufwinnr(g:neodbg_disas_name)
 
     if neodbg_winnr == -1
         if neodbg_winnr_stack == -1
@@ -732,6 +745,9 @@ function! neodebug#GotoThreadsWindow()
                 call neodebug#OpenThreadsWindow('h')
             elseif neodbg_winnr_break != -1
                 call neodebug#GotoBreakpointsWindow()
+                call neodebug#OpenThreadsWindow('h')
+            elseif neodbg_winnr_disas != -1
+                call neodebug#GotoDisasWindow()
                 call neodebug#OpenThreadsWindow('h')
             else
                 call neodebug#OpenThreads()
@@ -748,7 +764,7 @@ function! neodebug#GotoThreadsWindow()
     endif
     exec neodbg_winnr . "wincmd w"
     " exec "wincmd ="
-endf
+endfunction
 
 function! neodebug#OpenBreakpoints()
 
@@ -793,7 +809,7 @@ function! neodebug#OpenBreakpointsWindow(...)
         exe 'silent!  ' . g:neodbg_breakpoints_height. 'split ' . wcmd
     endif
     " exe 'silent!  ' . g:neodbg_breakpoints_height. 'split ' . wcmd
-    nnoremenu WinBar.Breakpoints   :call neodebug#UpdateBreakpointsWindow()<CR>
+    nnoremenu WinBar.Breakpoints/Disassemble   :call neodebug#UpdateBreaksOrDisas()<CR>
 endfunction
 
 function neodebug#CloseBreakpoints()
@@ -817,6 +833,7 @@ function! neodebug#GotoBreakpointsWindow()
     endif
 
     let neodbg_winnr = bufwinnr(g:neodbg_breakpoints_name)
+    let neodbg_winnr_disas = bufwinnr(g:neodbg_disas_name)
 
     let neodbg_winnr_stack = bufwinnr(g:neodbg_stackframes_name)
     let neodbg_winnr_thread = bufwinnr(g:neodbg_threads_name)
@@ -825,7 +842,8 @@ function! neodebug#GotoBreakpointsWindow()
     let neodbg_winnr_local = bufwinnr(g:neodbg_locals_name)
 
     if neodbg_winnr == -1
-        " if multi-tab or the buffer is hidden
+        if neodbg_winnr_disas == -1
+            " if multi-tab or the buffer is hidden
             if neodbg_winnr_local != -1
                 call neodebug#GotoLocalsWindow()
                 call neodebug#OpenBreakpointsWindow('h')
@@ -843,47 +861,172 @@ function! neodebug#GotoBreakpointsWindow()
             endif
 
             let neodbg_winnr = bufwinnr(g:neodbg_breakpoints_name)
+        else
+            call neodebug#GotoDisasWindow()
+            let bufnum = bufnr(g:neodbg_breakpoints_name)
+            exec "b ". bufnum
+            let neodbg_winnr = bufwinnr(g:neodbg_breakpoints_name)
+        endif
     endif
     exec neodbg_winnr . "wincmd w"
-endf
+endfunction
+
+function! neodebug#OpenDisas()
+    call neodebug#OpenDisasWindow()
+
+    setlocal buftype=nofile
+    setlocal complete=.
+    setlocal noswapfile
+    setlocal nowrap
+    setlocal nobuflisted
+    setlocal nonumber
+    setlocal winfixwidth
+    setlocal cursorline
+
+    setlocal foldcolumn=2
+    setlocal foldmarker={,}
+    setlocal foldmethod=marker
+
+    call neodebug#SetWindowSytaxHilight()
+
+    nnoremap <buffer> <silent> <CR> :call NeoDebug(getline('.'), 'n')<cr>
+    nmap <buffer> <silent> <2-LeftMouse> <cr>
+
+endfunction
+
+" Disas window
+function! neodebug#OpenDisasWindow(...)
+    let para = a:0>0 ? a:1 : 'v'
+    let bufnum = bufnr(g:neodbg_disas_name)
+
+    if bufnum == -1
+        " Create a new buffer
+        let wcmd = g:neodbg_disas_name
+    else
+        " Edit the existing buffer
+        let wcmd = '+buffer' . bufnum
+    endif
+
+    " Create the tag explorer window
+    if para == 'v'
+        exe 'silent!  botright ' . g:neodbg_disas_width. 'vsplit ' . wcmd
+    elseif para == 'h'
+        exe 'silent!  ' . g:neodbg_disas_height. 'split ' . wcmd
+    endif
+    " exe 'silent!  ' . g:neodbg_disas_height. 'split ' . wcmd
+    nnoremenu WinBar.Breakpoints/Disassemble   :call neodebug#UpdateBreaksOrDisas()<CR>
+endfunction
+
+function neodebug#CloseDisas()
+    let g:neodbg_opendisas_default = 0
+    call neodebug#CloseDisasWindow()
+endfunction
+
+function neodebug#CloseDisasWindow()
+    let winnr = bufwinnr(g:neodbg_disas_name)
+    if winnr != -1
+        call neodebug#GotoDisasWindow()
+        let s:neodbg_save_disas_cursor = getpos(".")
+        close
+        return 1
+    endif
+    return 0
+endfunction
+
+function! neodebug#GotoDisasWindow()
+    if bufname("%") == g:neodbg_disas_name
+        return
+    endif
+    let neodbg_winnr = bufwinnr(g:neodbg_disas_name)
+    let neodbg_winnr_break = bufwinnr(g:neodbg_breakpoints_name)
+
+    let neodbg_winnr_stack = bufwinnr(g:neodbg_stackframes_name)
+    let neodbg_winnr_thread = bufwinnr(g:neodbg_threads_name)
+
+    let neodbg_winnr_local = bufwinnr(g:neodbg_locals_name)
+    let neodbg_winnr_register = bufwinnr(g:neodbg_registers_name)
+
+    if neodbg_winnr == -1
+
+        if neodbg_winnr_break == -1
+            " if multi-tab or the buffer is hidden
+            if neodbg_winnr_stack != -1
+                call neodebug#GotoStackFramesWindow()
+                call neodebug#OpenDisasWindow('h')
+            elseif neodbg_winnr_thread != -1
+                call neodebug#GotoThreadsWindow()
+                call neodebug#OpenDisasWindow('h')
+            elseif neodbg_winnr_local != -1
+                call neodebug#GotoLocalsWindow()
+                call neodebug#OpenDisasWindow('h')
+            elseif neodbg_winnr_register != -1
+                call neodebug#GotoRegistersWindow()
+                call neodebug#OpenDisasWindow('h')
+            else
+                call neodebug#OpenDisas()
+            endif
+            let neodbg_winnr = bufwinnr(g:neodbg_disas_name)
+
+        else
+            call neodebug#GotoBreakpointsWindow()
+            let bufnum = bufnr(g:neodbg_disas_name)
+            exec "b ". bufnum
+            let neodbg_winnr = bufwinnr(g:neodbg_disas_name)
+        endif
+    endif
+    exec neodbg_winnr . "wincmd w"
+    " exec "wincmd ="
+endfunction
+
 
 function! neodebug#UpdateConsole()
     " if g:neodbg_openconsole_default == 0
         " return
     " endif
     call neodebug#UpdateConsoleWindow()
-endf
+endfunction
 
 function! neodebug#UpdateLocals()
     if g:neodbg_openlocals_default == 0
         return
     endif
     call neodebug#UpdateLocalsWindow()
-endf
+endfunction
+
 function! neodebug#UpdateRegisters()
     if g:neodbg_openregisters_default == 0
         return
     endif
     call neodebug#UpdateRegistersWindow()
-endf
+endfunction
+
 function! neodebug#UpdateStackFrames()
     if g:neodbg_openstacks_default == 0
         return
     endif
     call neodebug#UpdateStackFramesWindow()
-endf
+endfunction
+
 function! neodebug#UpdateThreads()
     if g:neodbg_openthreads_default == 0
         return
     endif
     call neodebug#UpdateThreadsWindow()
-endf
+endfunction
+
 function! neodebug#UpdateBreakpoints()
     if g:neodbg_openbreaks_default == 0
         return
     endif
     call neodebug#UpdateBreakpointsWindow()
-endf
+endfunction
+
+function! neodebug#UpdateDisas()
+    if g:neodbg_opendisas_default == 0
+        return
+    endif
+    call neodebug#UpdateDisasWindow()
+endfunction
 
 function! neodebug#UpdateConsoleWindow()
     " let g:neodbg_openconsole_default = 1
@@ -905,42 +1048,66 @@ function! neodebug#UpdateConsoleWindow()
     starti!
     redraw
 
-endf
+endfunction
 
 function! neodebug#UpdateLocalsWindow()
     let g:neodbg_openlocals_default = 1
     call neodebug#GotoLocalsWindow()
     silent exec '0,' . line("$") . 'd _'
     call NeoDebugSendCommand("info locals", 'u')
-endf
+endfunction
 
 function! neodebug#UpdateRegistersWindow()
     let g:neodbg_openregisters_default = 1
     call neodebug#GotoRegistersWindow()
     silent exec '0,' . line("$") . 'd _'
     call NeoDebugSendCommand("info registers", 'u')
-endf
+endfunction
 
 function! neodebug#UpdateStackFramesWindow()
     let g:neodbg_openstacks_default = 1
     call neodebug#GotoStackFramesWindow()
     silent exec '0,' . line("$") . 'd _'
     call NeoDebugSendCommand("backtrace", 'u')
-endf
+endfunction
 
 function! neodebug#UpdateThreadsWindow()
     let g:neodbg_openthreads_default = 1
     call neodebug#GotoThreadsWindow()
     silent exec '0,' . line("$") . 'd _'
     call NeoDebugSendCommand("info threads", 'u')
-endf
+endfunction
 
 function! neodebug#UpdateBreakpointsWindow()
     let g:neodbg_openbreaks_default = 1
     call neodebug#GotoBreakpointsWindow()
     silent exec '0,' . line("$") . 'd _'
     call NeoDebugSendCommand("info breakpoints", 'u')
-endf
+endfunction
+
+
+function! neodebug#UpdateDisasWindow()
+    let g:neodbg_opendisas_default = 1
+    call neodebug#GotoDisasWindow()
+    silent exec '0,' . line("$") . 'd _'
+    call NeoDebugSendCommand("disassemble", 'u')
+
+endfunction
+
+function! neodebug#UpdateBreaksOrDisas()
+
+    let neodbg_winnr_break = bufwinnr(g:neodbg_breakpoints_name)
+    let neodbg_winnr_disas = bufwinnr(g:neodbg_disas_name)
+
+    if neodbg_winnr_disas == -1
+        call neodebug#UpdateDisasWindow()
+    endif
+
+    if neodbg_winnr_break == -1
+        call neodebug#UpdateBreakpointsWindow()
+    endif
+endfunction
+
 
 function! neodebug#UpdateStackOrThreads()
 
@@ -1047,6 +1214,8 @@ function! neodebug#SetWindowSytaxHilight()
     " highlight the whole line for 
     " returns for info threads | info break | finish | watchpoint
     syn match NeoDebugHiLn /\v^\s*(Id\s+Target Id|Num\s+Type|Value returned is|(Old|New) value =|Hardware watchpoint).*$/
+    syn match NeoDebugHiLn /Dump of assembler code for function main:$/
+    syn match NeoDebugHiLn /End of assembler dump.$/
 
     " syntax for perldb
     syn match NeoDebugCmd /^\s*DB<.*/
