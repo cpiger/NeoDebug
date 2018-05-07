@@ -1106,7 +1106,7 @@ function! neodebug#InstallShotcut()
     nmap <silent> <F10>   :NeoDebug n<cr>
     nmap <silent> <F11>   :NeoDebug s<cr>
     nmap <silent> <S-F11> :NeoDebug finish<cr>
-    nmap <silent> <c-c> :NeoDebugStop<cr>
+    noremap <silent> <c-c> :NeoDebugStop<cr>
 
     map! <silent> <F5>    <c-o>:NeoDebug c<cr>
     map! <silent> <S-F5>  <c-o>:NeoDebug k<cr>

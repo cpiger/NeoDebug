@@ -101,6 +101,10 @@ function! NeoDebug(cmd, ...)  " [mode]
     let usercmd = a:cmd
     let mode = a:0>0 ? a:1 : ''
 
+    let s:cur_wid = win_getid(winnr())
+    " echomsg "s:cur_wid1".s:cur_wid
+    let s:cur_winnr = bufwinnr("%")
+
     if s:neodbg_running == 0
         let s:neodbg_port= 30000 + reltime()[1] % 10000
 
@@ -211,15 +215,16 @@ function! NeoDebug(cmd, ...)  " [mode]
         let usercmd = s:neodbg_is_debugging ? 'continue' : 'run'
     endif
 
-    let s:cur_wid = win_getid(winnr())
-    let s:cur_winnr = bufwinnr("%")
     call NeoDebugSendCommand(usercmd, mode)
 endf
 
 function! NeoDebugStop(cmd)
+    " echomsg "s:neodbg_running".s:neodbg_running
+
 	if !s:neodbg_running
 		return
 	endif
+
     if has('nvim')
         call jobstop(s:nvim_commjob)
     else
@@ -227,7 +232,7 @@ function! NeoDebugStop(cmd)
     endif
 endfunction
 
-let s:neodbg_init_flag = 0
+let s:neodbg_init_flag = 1
 func s:NeoDebugStart(cmd)
     let s:startwin = win_getid(winnr())
     let s:startsigncolumn = &signcolumn
@@ -268,6 +273,9 @@ func s:NeoDebugStart(cmd)
     " exec-interrupt, since many commands don't work properly while the target is
     " running.
     let s:neodbg_init_flag = 1
+    let s:init_count = 0
+    let s:start_count = 0
+    " echomsg "s:neodbg_init_flag==================".s:neodbg_init_flag
     call NeoDebugSendCommand('set mi-async on')
     if s:ismswin
         call NeoDebugSendCommand('set new-console on')
@@ -277,7 +285,7 @@ func s:NeoDebugStart(cmd)
     call NeoDebugSendCommand('set print pretty on')
     call NeoDebugSendCommand('set breakpoint pending on')
     call NeoDebugSendCommand('set pagination off')
-    let s:neodbg_init_flag = 0
+    " let s:neodbg_init_flag = 0
 
     " Install debugger commands in the text window.
     call win_gotoid(s:startwin)
@@ -370,16 +378,41 @@ endfunction
 
 let s:updateinfo_skip_flag = 0
 let s:completer_skip_flag = 0
+
+let g:append_messages = ["(gdb) "]
 let s:append_msg = ''
 let s:appendline = ''
 let s:append_err = ''
 let s:comm_msg   = ''
-let g:append_messages = ["(gdb) "]
+
+let s:init_messages = ["(gdb) "]
+let s:init_count = 0
+let s:start_count = 0
 " Handle a message received from debugger
 func s:HandleOutput(chan, msg)
     if g:neodbg_debuginfo == 1
         echomsg "<GDB>:".a:msg."[s:mode:".s:mode."]"
     endif
+    " echomsg "s:cur_wid2".s:cur_wid
+
+    " echomsg "s:neodbg_init_flag".s:neodbg_init_flag
+    " to control vim cursor position stay in neodebug console after init
+    " &"set pagination off 
+    if a:msg =~ 'set pagination off' &&  s:neodbg_init_flag == 1
+        let s:start_count = 1
+    endif
+    if s:start_count == 1
+        let s:init_count = s:init_count + 1
+    endif
+    if s:init_count == 5
+        let s:init_count = 0
+        let s:start_count = 0
+        let s:neodbg_init_flag = 0
+    endif
+    if s:neodbg_init_flag == 1
+        call add(s:init_messages, a:msg)
+    endif
+
 
     let neodbg_winnr = bufwinnr(g:neodbg_console_name)
     " echomsg "neodbg_winnr".neodbg_winnr
@@ -451,17 +484,9 @@ func s:HandleOutput(chan, msg)
         if updateinfo_line == g:neodbg_prompt
             if neodbg_winnr != -1
                 call neodebug#GotoConsoleWindow()
-
-                " if !empty(g:append_messages)
-                    " for append_message in (g:append_messages)
-                        " call append(line("$"), append_message)
-                    " endfor
-                    " " let  g:append_messages = []
-                    " let g:append_messages = ["(gdb) "]
-                " endif
-            else
-                call win_gotoid(s:cur_wid)
             endif
+            "back to current window
+            call win_gotoid(s:cur_wid)
         endif
     endif
 
@@ -631,14 +656,15 @@ func s:HandleOutput(chan, msg)
             starti!
             redraw
             if cur_mode != "i"
-                call feedkeys("\<ESC>")
+                stopi
             endif
         endif
 
-        " call win_gotoid(s:cur_wid)
-        " exec s:cur_winnr. "wincmd w"
-    endif
+        if debugger_line == g:neodbg_prompt && s:neodbg_init_flag == 0
+            call win_gotoid(s:cur_wid)
+        endif
 
+    endif
 
 endfunc
 
@@ -648,7 +674,6 @@ endfunction
 
 " Show a balloon with information of the variable under the mouse pointer,
 " if there is any.
-let s:neodbg_balloonexpr_flag = 0
 func! NeoDebugBalloonExpr()
     if v:beval_winid != s:startwin
         return
@@ -656,9 +681,7 @@ func! NeoDebugBalloonExpr()
     let s:evalFromBalloonExpr = 1
     let s:evalFromBalloonExprResult = ''
     let s:ignoreEvalError = 1
-    let s:neodbg_balloonexpr_flag = 1
     call s:SendEval(v:beval_text)
-    let s:neodbg_balloonexpr_flag = 0
 
     let output = ch_readraw(s:neodbg_chan)
     let alloutput = ''
@@ -680,9 +703,7 @@ func! NeoDebugBalloonExpr()
     if s:evalexpr[0] != '*' && value =~ '^0x' && value != '0x0' && value !~ '"$'
         " Looks like a pointer, also display what it points to.
         let s:ignoreEvalError = 1
-        let s:neodbg_balloonexpr_flag = 1
         call s:SendEval('*' . s:evalexpr)
-        let s:neodbg_balloonexpr_flag = 0
 
         let output = ch_readraw(s:neodbg_chan)
         let alloutput = ''
@@ -1061,7 +1082,9 @@ func s:HandleCursor(msg)
 
     if a:msg =~ '\(\*stopped\)'
         call neodebug#UpdateLocals()
+        call neodebug#UpdateRegisters()
         call neodebug#UpdateStackFrames()
+        call neodebug#UpdateThreads()
     endif
 
     if win_gotoid(s:startwin)
@@ -1162,7 +1185,7 @@ func s:HandleNewBreakpoint(msg)
     endif
     redraw
 
-        call neodebug#UpdateBreakpoints()
+    call neodebug#UpdateBreakpoints()
 endfunc
 
 " Handle deleting a breakpoint
