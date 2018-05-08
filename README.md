@@ -124,6 +124,9 @@ Options:
 
 4. source file changed notification and update breakpoints
 
+5. Options add:
+   info windows group customized.
+
 
 ## Thanks
 skyshore2001

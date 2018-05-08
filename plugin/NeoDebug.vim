@@ -43,11 +43,11 @@ endif
 if !exists('g:neodbg_opendisas_default')
     let g:neodbg_opendisas_default    = 0
 endif
+if !exists('g:neodbg_openexprs_default')
+    let g:neodbg_openexprs_default    = 1
+endif
 if !exists('g:neodbg_openwatchs_default')
     let g:neodbg_openwatchs_default    = 0
-endif
-if !exists('g:neodbg_openexprs_default')
-    let g:neodbg_openexprs_default    = 0
 endif
 
 let g:neodbg_console_name = "__DebugConsole__"
@@ -270,7 +270,7 @@ function! NeoDebugStop(cmd)
 endfunction
 
 let s:neodbg_init_flag = 1
-func s:NeoDebugStart(cmd)
+function! s:NeoDebugStart(cmd)
     let s:startwin = win_getid(winnr())
     let s:startsigncolumn = &signcolumn
 
@@ -345,13 +345,21 @@ func s:NeoDebugStart(cmd)
         au VimLeavePre * call delete(s:neodbg_exrc . s:neodbg_port)
     augroup END
 
-endfunc
+endfunction
 
-func s:NvimNeoDebugEnd(job_id, data, event_type) abort
+
+function! NeoDebugReadRaw()
+    return ch_readraw(s:neodbg_chan)
+endfunction
+
+
+function! s:NvimNeoDebugEnd(job_id, data, event_type) abort
     call s:NeoDebugEnd(a:job_id, a:event_type)
 endfunction
 
-func s:NeoDebugEnd(job, status)
+
+
+function! s:NeoDebugEnd(job, status)
 
 	if !s:neodbg_running
 		return
@@ -414,7 +422,7 @@ func s:NeoDebugEnd(job, status)
     au! NeoDebugAutoCMD
     "back to normal
     call feedkeys("\<ESC>")
-endfunc
+endfunction
 
 function! s:NvimHandleOutput(id, data, event)
     for msg in a:data
@@ -436,7 +444,7 @@ let s:init_messages = ["(gdb) "]
 let s:init_count = 0
 let s:start_count = 0
 " Handle a message received from debugger
-func s:HandleOutput(chan, msg)
+function! s:HandleOutput(chan, msg)
     if g:neodbg_debuginfo == 1
         echomsg "<GDB>:".a:msg."[s:mode:".s:mode."]"
     endif
@@ -484,7 +492,7 @@ func s:HandleOutput(chan, msg)
 
 
     " Handle update window
-    if  (s:mode == 'u') && ( "info breakpoints" == strpart(a:msg, 2, strlen("info breakpoints")) || "disassemble" == strpart(a:msg, 2, strlen("disassemble")) || "info locals" == strpart(a:msg, 2, strlen("info locals")) || "backtrace" == strpart(a:msg, 2, strlen("backtrace")) || "info threads" == strpart(a:msg, 2, strlen("info threads"))|| "info registers" == strpart(a:msg, 2, strlen("info registers")) || "info watchpoints" == strpart(a:msg, 2, strlen("info watchpoints")) )
+    if  (s:mode == 'u') && ( "info breakpoints" == strpart(a:msg, 2, strlen("info breakpoints")) || "disassemble" == strpart(a:msg, 2, strlen("disassemble")) || "info locals" == strpart(a:msg, 2, strlen("info locals")) || "backtrace" == strpart(a:msg, 2, strlen("backtrace")) || "info threads" == strpart(a:msg, 2, strlen("info threads"))|| "info registers" == strpart(a:msg, 2, strlen("info registers")) || "info watchpoints" == strpart(a:msg, 2, strlen("info watchpoints")) || "-data-evaluate-expression" == strpart(s:comm_msg, 2, strlen("-data-evaluate-expression")) )
         let s:updateinfo_skip_flag = 1
     endif
 
@@ -514,6 +522,10 @@ func s:HandleOutput(chan, msg)
 
             if "disassemble" == strpart(s:comm_msg, 2, strlen("disassemble"))
                 call neodebug#GotoDisasWindow()
+            endif
+
+            if "-data-evaluate-expression" == strpart(s:comm_msg, 2, strlen("-data-evaluate-expression"))
+                call neodebug#GotoExpressionsWindow()
             endif
 
             if "info watchpoints" == strpart(s:comm_msg, 2, strlen("info watchpoints"))
@@ -580,6 +592,12 @@ func s:HandleOutput(chan, msg)
     endif
 
     if  "disassemble" == strpart(s:comm_msg, 2, strlen("disassemble"))  && ( s:comm_msg =~  g:neodbg_prompt)
+        let s:updateinfo_skip_flag = 0
+        let s:comm_msg = ''
+        return
+    endif
+
+    if  "-data-evaluate-expression" == strpart(s:comm_msg, 2, strlen("info watchpoints"))  && ( s:comm_msg =~  g:neodbg_prompt)
         let s:updateinfo_skip_flag = 0
         let s:comm_msg = ''
         return
@@ -738,7 +756,7 @@ func s:HandleOutput(chan, msg)
 
     endif
 
-endfunc
+endfunction
 
 function! NeoDebugFoldTextExpr()
     return getline(v:foldstart) . ' ' . substitute(getline(v:foldstart+1), '\v^\s+', '', '') . ' ... (' . (v:foldend-v:foldstart-1) . ' lines)'
@@ -746,7 +764,7 @@ endfunction
 
 " Show a balloon with information of the variable under the mouse pointer,
 " if there is any.
-func! NeoDebugBalloonExpr()
+function! NeoDebugBalloonExpr()
     if v:beval_winid != s:startwin
         return
     endif
@@ -800,7 +818,76 @@ func! NeoDebugBalloonExpr()
 
     return s:evalFromBalloonExprResult
 
-endfunc
+endfunction
+
+function! NeoDebugExprEval(expr)
+    let s:evalForExprResult = ''
+    " call s:SendEval(a:expr)
+    call NeoDebugSendCommand('-data-evaluate-expression "' . a:expr . '"', 'u')
+    let s:evalexpr = a:expr
+
+    let alloutput = ''
+    let output = ch_readraw(s:neodbg_chan)
+    while 1
+        if output  =~ '^\^done,value=' || output =~ '^\^error,msg='
+            break
+        endif
+        let output = ch_readraw(s:neodbg_chan)
+    endw
+
+    let alloutput = output
+    while output != g:neodbg_prompt
+        let alloutput .= output
+        let output = ch_readraw(s:neodbg_chan)
+    endw
+    " echomsg "output".output
+    " echomsg "alloutput".alloutput
+    let value = ''
+    if alloutput =~ '^\^error,msg='
+        let value = '--N/A--'
+    else
+        let value = substitute(alloutput, '.*value="\(.*\)"', '\1', '')
+        let value = substitute(value, '\\"', '"', 'g')
+        let value = substitute(value, '\\n\s*', '', 'g')
+    endif
+
+    if s:evalForExprResult == ''
+       let s:evalForExprResult =  value
+    else
+       let s:evalForExprResult .= ' = ' . value
+    endif
+
+    "if s:evalForExprResult == ''
+    "    let s:evalForExprResult = s:evalexpr . ': ' . value
+    "else
+    "    let s:evalForExprResult .= ' = ' . value
+    "endif
+
+    "if s:evalexpr[0] != '*' && value =~ '^0x' && value != '0x0' && value !~ '"$'
+    "    " Looks like a pointer, also display what it points to.
+    "    let s:ignoreEvalError = 1
+    "    call s:SendEval('*' . s:evalexpr)
+
+    "    let output = ch_readraw(s:neodbg_chan)
+    "    let alloutput = ''
+    "    while output != g:neodbg_prompt
+    "        let alloutput .= output
+    "        let output = ch_readraw(s:neodbg_chan)
+    "    endw
+
+    "    let value = substitute(alloutput, '.*value="\(.*\)"', '\1', '')
+    "    let value = substitute(value, '\\"', '"', 'g')
+    "    let value = substitute(value, '\\n\s*', '', 'g')
+
+    "    let s:evalForExprResult .= ' ' . value
+
+    "endif
+
+    return s:evalForExprResult
+
+endfunction
+
+
 
 let s:neodbg_complete_flag = 0
 function! NeoDebugComplete(findstart, base)
@@ -903,7 +990,7 @@ function! NeoDebugExpandPointerExpr()
 endfunction
 
 " Delete installed debugger commands in the current window.
-func NeoDebugRestoreCommandsShotcut()
+function! NeoDebugRestoreCommandsShotcut()
     call neodebug#DeleteCommand()
     call neodebug#DeleteMenu()
     call neodebug#DeleteWinbar()
@@ -930,13 +1017,13 @@ func NeoDebugRestoreCommandsShotcut()
         call delete(s:neodbg_exrc . s:neodbg_port)
     endif
     stopi
-endfunc
+endfunction
 
 " :Next, :Continue, etc - send a command to debugger
 let s:neodbg_quitted = 0
 let s:neodbg_sendcmd_flag = 0
 let s:usercmd = ''
-" func NeoDebugSendCommand(cmd)
+" function! NeoDebugSendCommand(cmd)
 function! NeoDebugSendCommand(cmd, ...)  " [mode]
     " echomsg "<GDB>cmd:[".a:cmd."]"
     let usercmd = a:cmd
@@ -980,28 +1067,28 @@ function! NeoDebugSendCommand(cmd, ...)  " [mode]
     if usercmd == 'q'
         let  s:neodbg_quitted = 1
     endif
-endfunc
+endfunction
 
-func s:SendKey(key)
+function! s:SendKey(key)
     if has('nvim')
         call jobsend(s:nvim_commjob, a:key)
     else
         call ch_sendraw(s:commjob, a:key)
     endif
-endfunc
+endfunction
 
-func s:SendEval(expr)
+function! s:SendEval(expr)
     call NeoDebugSendCommand('-data-evaluate-expression "' . a:expr . '"')
     let s:evalexpr = a:expr
-endfunc
+endfunction
 
-func s:PlaceSign(nr, entry)
+function! s:PlaceSign(nr, entry)
     exe 'sign place ' . (s:break_id + a:nr) . ' line=' . a:entry['lnum'] . ' name=NeoDebugBP file=' . a:entry['fname']
     let a:entry['placed'] = 1
-endfunc
+endfunction
 
 " Handle a BufRead autocommand event: place any signs.
-func s:BufferRead()
+function! s:BufferRead()
     let fname = expand('<afile>:p')
     " let fname = fnamemodify(expand('<afile>:t'), ":p")
     " echomsg "BufferRead:".fname
@@ -1010,10 +1097,10 @@ func s:BufferRead()
             call s:PlaceSign(nr, entry)
         endif
     endfor
-endfunc
+endfunction
 
 " Handle a BufUnload autocommand event: unplace any signs.
-func s:BufferUnload()
+function! s:BufferUnload()
     let fname = expand('<afile>:p')
     " let fname = fnamemodify(expand('<afile>:t'), ":p")
     " echomsg "BufferUnload:".fname
@@ -1022,10 +1109,10 @@ func s:BufferUnload()
             let entry['placed'] = 0
         endif
     endfor
-endfunc
+endfunction
 
 
-func NeoDebugSetBreakpoint()
+function! NeoDebugSetBreakpoint()
     " Setting a breakpoint may not work while the program is running.
     " Interrupt to make it work.
     let do_continue = 0
@@ -1041,9 +1128,9 @@ func NeoDebugSetBreakpoint()
     if do_continue
         call NeoDebugSendCommand('-exec-continue')
     endif
-endfunc
+endfunction
 
-func NeoDebugClearBreakpoint()
+function! NeoDebugClearBreakpoint()
     call win_gotoid(s:startwin)
     let fname = fnameescape(expand('%:p'))
     let lnum = line('.')
@@ -1060,9 +1147,9 @@ func NeoDebugClearBreakpoint()
             break
         endif
     endfor
-endfunc
+endfunction
 
-func NeoDebugToggleBreakpoint()
+function! NeoDebugToggleBreakpoint()
     call win_gotoid(s:startwin)
     let fname = fnameescape(expand('%:p'))
     let lnum = line('.')
@@ -1080,16 +1167,16 @@ func NeoDebugToggleBreakpoint()
         endif
     endfor
     call NeoDebugSetBreakpoint()
-endfunc
+endfunction
 
-func NeoDebugRun(args)
+function! NeoDebugRun(args)
     if a:args != ''
         call NeoDebugSendCommand('-exec-arguments ' . a:args)
     endif
     call NeoDebugSendCommand('-exec-run')
-endfunc
+endfunction
 
-func NeoDebugEvaluate(range, arg)
+function! NeoDebugEvaluate(range, arg)
     if a:arg != ''
         let expr = a:arg
     elseif a:range == 2
@@ -1105,13 +1192,13 @@ func NeoDebugEvaluate(range, arg)
     endif
     let s:ignoreEvalError = 0
     call s:SendEval(expr)
-endfunc
+endfunction
 
 let s:ignoreEvalError = 0
 let s:evalFromBalloonExpr = 0
 
 " Handle the result of data-evaluate-expression
-func s:HandleEvaluate(msg)
+function! s:HandleEvaluate(msg)
     " echomsg "HandleEvaluate:".a:msg
     let value = substitute(a:msg, '.*value="\(.*\)"', '\1', '')
     let value = substitute(value, '\\"', '"', 'g')
@@ -1123,11 +1210,11 @@ func s:HandleEvaluate(msg)
     else
         let s:evalFromBalloonExpr = 0
     endif
-endfunc
+endfunction
 
 
 " Handle an error.
-func s:HandleError(msg)
+function! s:HandleError(msg)
     " call s:SendEval(v:beval_text)
     if s:ignoreEvalError
         " Result of s:SendEval() failed, ignore.
@@ -1136,11 +1223,11 @@ func s:HandleError(msg)
         return
     endif
     " echoerr substitute(a:msg, '.*msg="\(.*\)"', '\1', '')
-endfunc
+endfunction
 
 " Handle stopping and running message from debugger.
 " Will update the sign that shows the current position.
-func s:HandleCursor(msg)
+function! s:HandleCursor(msg)
     let wid = win_getid(winnr())
 
     if a:msg =~ '\*stopped'
@@ -1149,16 +1236,18 @@ func s:HandleCursor(msg)
         let s:stopped = 0
     endif
     if a:msg =~ '\(\*stopped,reason="breakpoint-hit"\)'
-        call  neodebug#UpdateBreakpoints()
+        " call  neodebug#UpdateBreakpoints()
     endif
 
     if a:msg =~ '\(\*stopped\)'
+        "first for locals windows cant refresh
+        call neodebug#UpdateExpressions()
+
         call neodebug#UpdateLocals()
         call neodebug#UpdateRegisters()
         call neodebug#UpdateStackFrames()
         call neodebug#UpdateThreads()
         call neodebug#UpdateDisas()
-        call neodebug#UpdateWatchpoints()
     endif
 
     if win_gotoid(s:startwin)
@@ -1197,11 +1286,12 @@ func s:HandleCursor(msg)
 
         call win_gotoid(wid)
     endif
-endfunc
+endfunction
 
 " Handle setting a breakpoint
 " Will update the sign that shows the breakpoint
-func s:HandleNewBreakpoint(msg)
+function! s:HandleNewBreakpoint(msg)
+    call neodebug#UpdateWatchpoints()
     if -1 == stridx(a:msg, 'fullname')
         return
     endif
@@ -1260,11 +1350,11 @@ func s:HandleNewBreakpoint(msg)
     redraw
 
     call neodebug#UpdateBreakpoints()
-endfunc
+endfunction
 
 " Handle deleting a breakpoint
 " Will remove the sign that shows the breakpoint
-func s:HandleBreakpointDelete(msg)
+function! s:HandleBreakpointDelete(msg)
     let nr = substitute(a:msg, '.*id="\([0-9]*\)\".*', '\1', '') + 0
     if nr == 0
         return
@@ -1277,8 +1367,12 @@ func s:HandleBreakpointDelete(msg)
         endif
         unlet s:breakpoints[nr]
     endif
+
+    if s:neodbg_quitted != 1
+        call neodebug#UpdateWatchpoints()
+    endif
     call neodebug#UpdateBreakpoints()
-endfunc
+endfunction
 
 " TODO 
 function! s:NeoDebug_bpkey(file, line)
