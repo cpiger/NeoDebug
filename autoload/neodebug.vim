@@ -407,6 +407,9 @@ function! neodebug#GotoLocalsWindow()
     let neodbg_winnr_break = bufwinnr(g:neodbg_breakpoints_name)
     let neodbg_winnr_disas = bufwinnr(g:neodbg_disas_name)
 
+    let neodbg_winnr_expr = bufwinnr(g:neodbg_expressions_name)
+    let neodbg_winnr_watch = bufwinnr(g:neodbg_watchpoints_name)
+
     if neodbg_winnr == -1
         if neodbg_winnr_register == -1
             " if multi-tab or the buffer is hidden
@@ -421,6 +424,12 @@ function! neodebug#GotoLocalsWindow()
                 call neodebug#OpenLocalsWindow('h')
             elseif neodbg_winnr_disas != -1
                 call neodebug#GotoDisasWindow()
+                call neodebug#OpenLocalsWindow('h')
+            elseif neodbg_winnr_expr != -1
+                call neodebug#GotoExpressionsWindow()
+                call neodebug#OpenLocalsWindow('h')
+            elseif neodbg_winnr_watch != -1
+                call neodebug#GotoWatchpointsWindow()
                 call neodebug#OpenLocalsWindow('h')
             else
                 call neodebug#OpenLocals()
@@ -514,6 +523,9 @@ function! neodebug#GotoRegistersWindow()
     let neodbg_winnr_break = bufwinnr(g:neodbg_breakpoints_name)
     let neodbg_winnr_disas = bufwinnr(g:neodbg_disas_name)
 
+    let neodbg_winnr_expr = bufwinnr(g:neodbg_expressions_name)
+    let neodbg_winnr_watch = bufwinnr(g:neodbg_watchpoints_name)
+
     if neodbg_winnr == -1
 
         if neodbg_winnr_local == -1
@@ -529,6 +541,12 @@ function! neodebug#GotoRegistersWindow()
                 call neodebug#OpenRegistersWindow('h')
             elseif neodbg_winnr_disas != -1
                 call neodebug#GotoDisasWindow()
+                call neodebug#OpenRegistersWindow('h')
+            elseif neodbg_winnr_expr != -1
+                call neodebug#GotoExpressionsWindow()
+                call neodebug#OpenRegistersWindow('h')
+            elseif neodbg_winnr_watch != -1
+                call neodebug#GotoWatchpointsWindow()
                 call neodebug#OpenRegistersWindow('h')
             else
                 call neodebug#OpenRegisters()
@@ -626,6 +644,9 @@ function! neodebug#GotoStackFramesWindow()
     let neodbg_winnr_break = bufwinnr(g:neodbg_breakpoints_name)
     let neodbg_winnr_disas = bufwinnr(g:neodbg_disas_name)
 
+    let neodbg_winnr_expr = bufwinnr(g:neodbg_expressions_name)
+    let neodbg_winnr_watch = bufwinnr(g:neodbg_watchpoints_name)
+
     if neodbg_winnr == -1
         if neodbg_winnr_thread == -1
             " if multi-tab or the buffer is hidden
@@ -640,6 +661,12 @@ function! neodebug#GotoStackFramesWindow()
                 call neodebug#OpenStackFramesWindow('h')
             elseif neodbg_winnr_disas != -1
                 call neodebug#GotoDisasWindow()
+                call neodebug#OpenStackFramesWindow('h')
+            elseif neodbg_winnr_expr != -1
+                call neodebug#GotoExpressionsWindow()
+                call neodebug#OpenStackFramesWindow('h')
+            elseif neodbg_winnr_watch != -1
+                call neodebug#GotoWatchpointsWindow()
                 call neodebug#OpenStackFramesWindow('h')
             else
                 call neodebug#OpenStackFrames()
@@ -734,6 +761,9 @@ function! neodebug#GotoThreadsWindow()
     let neodbg_winnr_break = bufwinnr(g:neodbg_breakpoints_name)
     let neodbg_winnr_disas = bufwinnr(g:neodbg_disas_name)
 
+    let neodbg_winnr_expr = bufwinnr(g:neodbg_expressions_name)
+    let neodbg_winnr_watch = bufwinnr(g:neodbg_watchpoints_name)
+
     if neodbg_winnr == -1
         if neodbg_winnr_stack == -1
             " if multi-tab or the buffer is hidden
@@ -748,6 +778,12 @@ function! neodebug#GotoThreadsWindow()
                 call neodebug#OpenThreadsWindow('h')
             elseif neodbg_winnr_disas != -1
                 call neodebug#GotoDisasWindow()
+                call neodebug#OpenThreadsWindow('h')
+            elseif neodbg_winnr_expr != -1
+                call neodebug#GotoExpressionsWindow()
+                call neodebug#OpenThreadsWindow('h')
+            elseif neodbg_winnr_watch != -1
+                call neodebug#GotoWatchpointsWindow()
                 call neodebug#OpenThreadsWindow('h')
             else
                 call neodebug#OpenThreads()
@@ -841,6 +877,9 @@ function! neodebug#GotoBreakpointsWindow()
     let neodbg_winnr_register = bufwinnr(g:neodbg_registers_name)
     let neodbg_winnr_local = bufwinnr(g:neodbg_locals_name)
 
+    let neodbg_winnr_expr = bufwinnr(g:neodbg_expressions_name)
+    let neodbg_winnr_watch = bufwinnr(g:neodbg_watchpoints_name)
+
     if neodbg_winnr == -1
         if neodbg_winnr_disas == -1
             " if multi-tab or the buffer is hidden
@@ -855,6 +894,12 @@ function! neodebug#GotoBreakpointsWindow()
                 call neodebug#OpenBreakpointsWindow('h')
             elseif neodbg_winnr_thread != -1
                 call neodebug#GotoThreadsWindow()
+                call neodebug#OpenBreakpointsWindow('h')
+            elseif neodbg_winnr_expr != -1
+                call neodebug#GotoExpressionsWindow()
+                call neodebug#OpenBreakpointsWindow('h')
+            elseif neodbg_winnr_watch != -1
+                call neodebug#GotoWatchpointsWindow()
                 call neodebug#OpenBreakpointsWindow('h')
             else
                 call neodebug#OpenBreakpoints()
@@ -946,6 +991,9 @@ function! neodebug#GotoDisasWindow()
     let neodbg_winnr_local = bufwinnr(g:neodbg_locals_name)
     let neodbg_winnr_register = bufwinnr(g:neodbg_registers_name)
 
+    let neodbg_winnr_expr = bufwinnr(g:neodbg_expressions_name)
+    let neodbg_winnr_watch = bufwinnr(g:neodbg_watchpoints_name)
+
     if neodbg_winnr == -1
 
         if neodbg_winnr_break == -1
@@ -961,6 +1009,12 @@ function! neodebug#GotoDisasWindow()
                 call neodebug#OpenDisasWindow('h')
             elseif neodbg_winnr_register != -1
                 call neodebug#GotoRegistersWindow()
+                call neodebug#OpenDisasWindow('h')
+            elseif neodbg_winnr_expr != -1
+                call neodebug#GotoExpressionsWindow()
+                call neodebug#OpenDisasWindow('h')
+            elseif neodbg_winnr_watch != -1
+                call neodebug#GotoWatchpointsWindow()
                 call neodebug#OpenDisasWindow('h')
             else
                 call neodebug#OpenDisas()
@@ -978,6 +1032,235 @@ function! neodebug#GotoDisasWindow()
     " exec "wincmd ="
 endfunction
 
+function! neodebug#OpenExpressions()
+
+    call neodebug#OpenExpressionsWindow()
+
+    setlocal buftype=nofile
+    setlocal complete=.
+    setlocal noswapfile
+    setlocal nowrap
+    setlocal nobuflisted
+    setlocal nonumber
+    setlocal winfixwidth
+    setlocal cursorline
+
+    setlocal foldcolumn=2
+    setlocal foldmarker={,}
+    setlocal foldmethod=marker
+
+    call neodebug#SetWindowSytaxHilight()
+
+    nnoremap <buffer> <silent> <CR> :call NeoDebug(getline('.'), 'n')<cr>
+    nmap <buffer> <silent> <2-LeftMouse> <cr>
+
+endfunction
+" Expressions window
+function! neodebug#OpenExpressionsWindow(...)
+    let para = a:0>0 ? a:1 : 'v'
+    let bufnum = bufnr(g:neodbg_expressions_name)
+
+    if bufnum == -1
+        " Create a new buffer
+        let wcmd = g:neodbg_expressions_name
+    else
+        " Edit the existing buffer
+        let wcmd = '+buffer' . bufnum
+    endif
+
+    " Create the tag explorer window
+    if para == 'v'
+        exe 'silent!  botright ' . g:neodbg_expressions_width. 'vsplit ' . wcmd
+    elseif para == 'h'
+        exe 'silent!  ' . g:neodbg_expressions_height. 'split ' . wcmd
+    endif
+    " exe 'silent!  ' . g:neodbg_expressions_height. 'split ' . wcmd
+    nnoremenu WinBar.Expressions/Watchpoints   :call neodebug#UpdateExprsOrWatchs()<CR>
+endfunction
+
+function neodebug#CloseExpressions()
+    let g:neodbg_openexprs_default = 0
+    call neodebug#CloseExpressionsWindow()
+endfunction
+function neodebug#CloseExpressionsWindow()
+    let winnr = bufwinnr(g:neodbg_expressions_name)
+    if winnr != -1
+        call neodebug#GotoExpressionsWindow()
+        let s:neodbg_save_expr_cursor = getpos(".")
+        close
+        return 1
+    endif
+    return 0
+endfunction
+
+function! neodebug#GotoExpressionsWindow()
+    if bufname("%") == g:neodbg_expressions_name
+        return
+    endif
+
+    let neodbg_winnr = bufwinnr(g:neodbg_expressions_name)
+    let neodbg_winnr_watch = bufwinnr(g:neodbg_watchpoints_name)
+
+    let neodbg_winnr_register = bufwinnr(g:neodbg_registers_name)
+    let neodbg_winnr_local = bufwinnr(g:neodbg_locals_name)
+
+    let neodbg_winnr_stack = bufwinnr(g:neodbg_stackframes_name)
+    let neodbg_winnr_thread = bufwinnr(g:neodbg_threads_name)
+
+    let neodbg_winnr_break = bufwinnr(g:neodbg_breakpoints_name)
+    let neodbg_winnr_disas = bufwinnr(g:neodbg_disas_name)
+
+    if neodbg_winnr == -1
+        if neodbg_winnr_watch == -1
+            " if multi-tab or the buffer is hidden
+            if neodbg_winnr_local != -1
+                call neodebug#GotoLocalsWindow()
+                call neodebug#OpenExpressionsWindow('h')
+            elseif neodbg_winnr_register != -1
+                call neodebug#GotoRegistersWindow()
+                call neodebug#OpenExpressionsWindow('h')
+            elseif neodbg_winnr_stack != -1
+                call neodebug#GotoStackFramesWindow()
+                call neodebug#OpenExpressionsWindow('h')
+            elseif neodbg_winnr_thread != -1
+                call neodebug#GotoThreadsWindow()
+                call neodebug#OpenExpressionsWindow('h')
+            elseif neodbg_winnr_break != -1
+                call neodebug#GotoBreakpointsWindow()
+                call neodebug#OpenExpressionsWindow('h')
+            elseif neodbg_winnr_disas != -1
+                call neodebug#GotoDisasWindow()
+                call neodebug#OpenExpressionsWindow('h')
+            else
+                call neodebug#OpenExpressions()
+            endif
+
+            let neodbg_winnr = bufwinnr(g:neodbg_expressions_name)
+        else
+            call neodebug#GotoWatchpointsWindow()
+            let bufnum = bufnr(g:neodbg_expressions_name)
+            exec "b ". bufnum
+            let neodbg_winnr = bufwinnr(g:neodbg_expressions_name)
+        endif
+    endif
+    exec neodbg_winnr . "wincmd w"
+endfunction
+
+function! neodebug#OpenWatchpoints()
+    call neodebug#OpenWatchpointsWindow()
+
+    setlocal buftype=nofile
+    setlocal complete=.
+    setlocal noswapfile
+    setlocal nowrap
+    setlocal nobuflisted
+    setlocal nonumber
+    setlocal winfixwidth
+    setlocal cursorline
+
+    setlocal foldcolumn=2
+    setlocal foldmarker={,}
+    setlocal foldmethod=marker
+
+    call neodebug#SetWindowSytaxHilight()
+
+    nnoremap <buffer> <silent> <CR> :call NeoDebug(getline('.'), 'n')<cr>
+    nmap <buffer> <silent> <2-LeftMouse> <cr>
+
+endfunction
+
+" Watchpoints window
+function! neodebug#OpenWatchpointsWindow(...)
+    let para = a:0>0 ? a:1 : 'v'
+    let bufnum = bufnr(g:neodbg_watchpoints_name)
+
+    if bufnum == -1
+        " Create a new buffer
+        let wcmd = g:neodbg_watchpoints_name
+    else
+        " Edit the existing buffer
+        let wcmd = '+buffer' . bufnum
+    endif
+
+    " Create the tag explorer window
+    if para == 'v'
+        exe 'silent!  botright ' . g:neodbg_watchpoints_width. 'vsplit ' . wcmd
+    elseif para == 'h'
+        exe 'silent!  ' . g:neodbg_watchpoints_height. 'split ' . wcmd
+    endif
+    " exe 'silent!  ' . g:neodbg_watchpoints_height. 'split ' . wcmd
+    nnoremenu WinBar.Expressions/Watchpoints   :call neodebug#UpdateExprsOrWatchs()<CR>
+endfunction
+
+function neodebug#CloseWatchpoints()
+    let g:neodbg_openwatchs_default = 0
+    call neodebug#CloseWatchpointsWindow()
+endfunction
+
+function neodebug#CloseWatchpointsWindow()
+    let winnr = bufwinnr(g:neodbg_watchpoints_name)
+    if winnr != -1
+        call neodebug#GotoWatchpointsWindow()
+        let s:neodbg_save_watch_cursor = getpos(".")
+        close
+        return 1
+    endif
+    return 0
+endfunction
+
+function! neodebug#GotoWatchpointsWindow()
+    if bufname("%") == g:neodbg_watchpoints_name
+        return
+    endif
+    let neodbg_winnr = bufwinnr(g:neodbg_watchpoints_name)
+    let neodbg_winnr_expr = bufwinnr(g:neodbg_expressions_name)
+
+    let neodbg_winnr_local = bufwinnr(g:neodbg_locals_name)
+    let neodbg_winnr_register = bufwinnr(g:neodbg_registers_name)
+
+    let neodbg_winnr_stack = bufwinnr(g:neodbg_stackframes_name)
+    let neodbg_winnr_thread = bufwinnr(g:neodbg_threads_name)
+
+    let neodbg_winnr_break = bufwinnr(g:neodbg_breakpoints_name)
+    let neodbg_winnr_disas = bufwinnr(g:neodbg_disas_name)
+
+    if neodbg_winnr == -1
+
+        if neodbg_winnr_expr == -1
+            " if multi-tab or the buffer is hidden
+            if neodbg_winnr_stack != -1
+                call neodebug#GotoStackFramesWindow()
+                call neodebug#OpenWatchpointsWindow('h')
+            elseif neodbg_winnr_thread != -1
+                call neodebug#GotoThreadsWindow()
+                call neodebug#OpenWatchpointsWindow('h')
+            elseif neodbg_winnr_local != -1
+                call neodebug#GotoLocalsWindow()
+                call neodebug#OpenWatchpointsWindow('h')
+            elseif neodbg_winnr_register != -1
+                call neodebug#GotoRegistersWindow()
+                call neodebug#OpenWatchpointsWindow('h')
+            elseif neodbg_winnr_break != -1
+                call neodebug#GotoBreakpointsWindow()
+                call neodebug#OpenWatchpointsWindow('h')
+            elseif neodbg_winnr_disas != -1
+                call neodebug#GotoDisasWindow()
+                call neodebug#OpenWatchpointsWindow('h')
+            else
+                call neodebug#OpenWatchpoints()
+            endif
+            let neodbg_winnr = bufwinnr(g:neodbg_watchpoints_name)
+
+        else
+            call neodebug#GotoExpressionsWindow()
+            let bufnum = bufnr(g:neodbg_watchpoints_name)
+            exec "b ". bufnum
+            let neodbg_winnr = bufwinnr(g:neodbg_watchpoints_name)
+        endif
+    endif
+    exec neodbg_winnr . "wincmd w"
+    " exec "wincmd ="
+endfunction
 
 function! neodebug#UpdateConsole()
     " if g:neodbg_openconsole_default == 0
@@ -1026,6 +1309,20 @@ function! neodebug#UpdateDisas()
         return
     endif
     call neodebug#UpdateDisasWindow()
+endfunction
+
+function! neodebug#UpdateExpressions()
+    if g:neodbg_openexprs_default == 0
+        return
+    endif
+    call neodebug#UpdateExpressionsWindow()
+endfunction
+
+function! neodebug#UpdateWatchpoints()
+    if g:neodbg_openwatchs_default == 0
+        return
+    endif
+    call neodebug#UpdateWatchpointsWindow()
 endfunction
 
 function! neodebug#UpdateConsoleWindow()
@@ -1095,7 +1392,6 @@ function! neodebug#UpdateBreakpointsWindow()
     call NeoDebugSendCommand("info breakpoints", 'u')
 endfunction
 
-
 function! neodebug#UpdateDisasWindow()
     let g:neodbg_opendisas_default = 1
     call neodebug#GotoDisasWindow()
@@ -1103,7 +1399,53 @@ function! neodebug#UpdateDisasWindow()
     silent exec '0,' . line("$") . 'd _'
     call neodebug#SetBufDisable()
     call NeoDebugSendCommand("disassemble", 'u')
+endfunction
 
+function! neodebug#UpdateExpressionsWindow()
+    let g:neodbg_openexprs_default = 1
+    call neodebug#GotoExpressionsWindow()
+    call neodebug#SetBufEnable()
+    silent exec '0,' . line("$") . 'd _'
+    call neodebug#SetBufDisable()
+    " call NeoDebugSendCommand("info expressions", 'u')
+endfunction
+
+function! neodebug#UpdateWatchpointsWindow()
+    let g:neodbg_openwatchs_default = 1
+    call neodebug#GotoWatchpointsWindow()
+    call neodebug#SetBufEnable()
+    silent exec '0,' . line("$") . 'd _'
+    call neodebug#SetBufDisable()
+    call NeoDebugSendCommand("info watchpoints", 'u')
+endfunction
+
+
+function! neodebug#UpdateLocalsOrRegisters()
+
+    let neodbg_winnr_register = bufwinnr(g:neodbg_registers_name)
+    let neodbg_winnr_local = bufwinnr(g:neodbg_locals_name)
+
+    if neodbg_winnr_register == -1
+        call neodebug#UpdateRegistersWindow()
+    endif
+
+    if neodbg_winnr_local == -1
+        call neodebug#UpdateLocalsWindow()
+    endif
+endfunction
+
+function! neodebug#UpdateStackOrThreads()
+
+    let neodbg_winnr_thread = bufwinnr(g:neodbg_threads_name)
+    let neodbg_winnr_stack = bufwinnr(g:neodbg_stackframes_name)
+
+    if neodbg_winnr_thread == -1
+        call neodebug#UpdateThreadsWindow()
+    endif
+
+    if neodbg_winnr_stack == -1
+        call neodebug#UpdateStackFramesWindow()
+    endif
 endfunction
 
 function! neodebug#UpdateBreaksOrDisas()
@@ -1120,32 +1462,17 @@ function! neodebug#UpdateBreaksOrDisas()
     endif
 endfunction
 
+function! neodebug#UpdateExprsOrWatchs()
 
-function! neodebug#UpdateStackOrThreads()
+    let neodbg_winnr_watch = bufwinnr(g:neodbg_watchpoints_name)
+    let neodbg_winnr_expr = bufwinnr(g:neodbg_expressions_name)
 
-    let neodbg_winnr_thread = bufwinnr(g:neodbg_threads_name)
-    let neodbg_winnr_stack = bufwinnr(g:neodbg_stackframes_name)
-
-    if neodbg_winnr_thread == -1
-        call neodebug#UpdateThreadsWindow()
+    if neodbg_winnr_expr == -1
+        call neodebug#UpdateExpressionsWindow()
     endif
 
-    if neodbg_winnr_stack == -1
-        call neodebug#UpdateStackFramesWindow()
-    endif
-endfunction
-
-function! neodebug#UpdateLocalsOrRegisters()
-
-    let neodbg_winnr_register = bufwinnr(g:neodbg_registers_name)
-    let neodbg_winnr_local = bufwinnr(g:neodbg_locals_name)
-
-    if neodbg_winnr_register == -1
-        call neodebug#UpdateRegistersWindow()
-    endif
-
-    if neodbg_winnr_local == -1
-        call neodebug#UpdateLocalsWindow()
+    if neodbg_winnr_watch == -1
+        call neodebug#UpdateWatchpointsWindow()
     endif
 endfunction
 

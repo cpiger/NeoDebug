@@ -24,11 +24,12 @@ if !exists('g:neodbg_enable_help')
     let g:neodbg_enable_help = 1
 endif
 
-if !exists('g:neodbg_openbreaks_default')
-    let g:neodbg_openbreaks_default    = 0
+
+if !exists('g:neodbg_openlocals_default')
+    let g:neodbg_openlocals_default    = 1
 endif
-if !exists('g:neodbg_opendisas_default')
-    let g:neodbg_opendisas_default    = 0
+if !exists('g:neodbg_openregisters_default')
+    let g:neodbg_openregisters_default = 0
 endif
 if !exists('g:neodbg_openstacks_default')
     let g:neodbg_openstacks_default    = 0
@@ -36,24 +37,22 @@ endif
 if !exists('g:neodbg_openthreads_default')
     let g:neodbg_openthreads_default   = 0
 endif
-if !exists('g:neodbg_openlocals_default')
-    let g:neodbg_openlocals_default    = 1
+if !exists('g:neodbg_openbreaks_default')
+    let g:neodbg_openbreaks_default    = 0
 endif
-if !exists('g:neodbg_openregisters_default')
-    let g:neodbg_openregisters_default = 0
+if !exists('g:neodbg_opendisas_default')
+    let g:neodbg_opendisas_default    = 0
+endif
+if !exists('g:neodbg_openwatchs_default')
+    let g:neodbg_openwatchs_default    = 0
+endif
+if !exists('g:neodbg_openexprs_default')
+    let g:neodbg_openexprs_default    = 0
 endif
 
 let g:neodbg_console_name = "__DebugConsole__"
 let g:neodbg_console_height = 15
 let g:neodbg_prompt = '(gdb) '
-
-let g:neodbg_breakpoints_name = "__Breakpoints__"
-let g:neodbg_breakpoints_width = 50
-let g:neodbg_breakpoints_height = 25
-
-let g:neodbg_disas_name = "__Disassemble__"
-let g:neodbg_disas_width = 50
-let g:neodbg_disas_height = 25
 
 let g:neodbg_locals_name = "__Locals__"
 let g:neodbg_locals_width = 50
@@ -71,12 +70,30 @@ let g:neodbg_threads_name = "__Threads__"
 let g:neodbg_threads_width = 50
 let g:neodbg_threads_height = 25
 
+let g:neodbg_breakpoints_name = "__Breakpoints__"
+let g:neodbg_breakpoints_width = 50
+let g:neodbg_breakpoints_height = 25
+
+let g:neodbg_disas_name = "__Disassemble__"
+let g:neodbg_disas_width = 50
+let g:neodbg_disas_height = 25
+
+let g:neodbg_expressions_name = "__Expressions__"
+let g:neodbg_expressions_width = 50
+let g:neodbg_expressions_height = 25
+
+let g:neodbg_watchpoints_name = "__Watchpoints__"
+let g:neodbg_watchpoints_width = 50
+let g:neodbg_watchpoints_height = 25
+
 let g:neodbg_locals_win = 0
 let g:neodbg_registers_win = 0
 let g:neodbg_stackframes_win = 0
 let g:neodbg_threads_win = 0
 let g:neodbg_breakpoints_win = 0
 let g:neodbg_disas_win = 0
+let g:neodbg_expressions_win = 0
+let g:neodbg_watchpoints_win = 0
 
 
 let s:neodbg_chan = 0
@@ -134,7 +151,15 @@ function! NeoDebug(cmd, ...)  " [mode]
         call neodebug#OpenDisas()
         let g:neodbg_disas_win = win_getid(winnr())
 
+        call neodebug#OpenExpressions()
+        let g:neodbg_expressions_win = win_getid(winnr())
 
+        call neodebug#OpenWatchpoints()
+        let g:neodbg_watchpoints_win = win_getid(winnr())
+
+
+        call neodebug#CloseWatchpointsWindow()
+        call neodebug#CloseExpressionsWindow()
         call neodebug#CloseDisasWindow()
         call neodebug#CloseBreakpointsWindow()
         call neodebug#CloseThreadsWindow()
@@ -336,6 +361,10 @@ func s:NeoDebugEnd(job, status)
     sign unplace *
 
     " If neodebug console window is open then close it.
+    call neodebug#GotoWatchpointsWindow()
+    quit
+    call neodebug#GotoExpressionsWindow()
+    quit
     call neodebug#GotoBreakpointsWindow()
     quit
     call neodebug#GotoDisasWindow()
@@ -357,6 +386,8 @@ func s:NeoDebugEnd(job, status)
     exe 'bwipe! ' . bufnr(g:neodbg_threads_name)
     exe 'bwipe! ' . bufnr(g:neodbg_breakpoints_name)
     exe 'bwipe! ' . bufnr(g:neodbg_disas_name)
+    exe 'bwipe! ' . bufnr(g:neodbg_expressions_name)
+    exe 'bwipe! ' . bufnr(g:neodbg_watchpoints_name)
     exe 'bwipe! ' . bufnr(g:neodbg_console_name)
 
     let curwinid = win_getid(winnr())
@@ -453,7 +484,7 @@ func s:HandleOutput(chan, msg)
 
 
     " Handle update window
-    if  (s:mode == 'u') && ( "info breakpoints" == strpart(a:msg, 2, strlen("info breakpoints")) || "disassemble" == strpart(a:msg, 2, strlen("disassemble")) || "info locals" == strpart(a:msg, 2, strlen("info locals")) || "backtrace" == strpart(a:msg, 2, strlen("backtrace")) || "info threads" == strpart(a:msg, 2, strlen("info threads"))|| "info registers" == strpart(a:msg, 2, strlen("info registers")))
+    if  (s:mode == 'u') && ( "info breakpoints" == strpart(a:msg, 2, strlen("info breakpoints")) || "disassemble" == strpart(a:msg, 2, strlen("disassemble")) || "info locals" == strpart(a:msg, 2, strlen("info locals")) || "backtrace" == strpart(a:msg, 2, strlen("backtrace")) || "info threads" == strpart(a:msg, 2, strlen("info threads"))|| "info registers" == strpart(a:msg, 2, strlen("info registers")) || "info watchpoints" == strpart(a:msg, 2, strlen("info watchpoints")) )
         let s:updateinfo_skip_flag = 1
     endif
 
@@ -483,6 +514,10 @@ func s:HandleOutput(chan, msg)
 
             if "disassemble" == strpart(s:comm_msg, 2, strlen("disassemble"))
                 call neodebug#GotoDisasWindow()
+            endif
+
+            if "info watchpoints" == strpart(s:comm_msg, 2, strlen("info watchpoints"))
+                call neodebug#GotoWatchpointsWindow()
             endif
 
             if updateinfo_line =~ '^\~"'  
@@ -545,6 +580,12 @@ func s:HandleOutput(chan, msg)
     endif
 
     if  "disassemble" == strpart(s:comm_msg, 2, strlen("disassemble"))  && ( s:comm_msg =~  g:neodbg_prompt)
+        let s:updateinfo_skip_flag = 0
+        let s:comm_msg = ''
+        return
+    endif
+
+    if  "info watchpoints" == strpart(s:comm_msg, 2, strlen("info watchpoints"))  && ( s:comm_msg =~  g:neodbg_prompt)
         let s:updateinfo_skip_flag = 0
         let s:comm_msg = ''
         return
@@ -1117,6 +1158,7 @@ func s:HandleCursor(msg)
         call neodebug#UpdateStackFrames()
         call neodebug#UpdateThreads()
         call neodebug#UpdateDisas()
+        call neodebug#UpdateWatchpoints()
     endif
 
     if win_gotoid(s:startwin)
@@ -1310,6 +1352,8 @@ command!  OpenStacks :call neodebug#UpdateStackFramesWindow()
 command!  OpenThreads :call neodebug#UpdateThreadsWindow()
 command!  OpenBreaks :call neodebug#UpdateBreakpointsWindow()
 command!  OpenDisas :call neodebug#UpdateDisasWindow()
+command!  OpenExpressions :call neodebug#UpdateExpressionsWindow()
+command!  OpenWatchs :call neodebug#UpdateWatchpointsWindow()
 
 command!  CloseConsole :call neodebug#CloseConsole()
 command!  CloseLocals :call neodebug#CloseLocals()
@@ -1318,5 +1362,7 @@ command!  CloseStacks :call neodebug#CloseStackFrames()
 command!  CloseThreads :call neodebug#CloseThreads()
 command!  CloseBreaks :call neodebug#CloseBreakpoints()
 command!  CloseDisas :call neodebug#CloseDisas()
+command!  CloseExpressions :call neodebug#CloseExpressions()
+command!  CloseWatchs :call neodebug#CloseWatchpoints()
 
 " vim: set foldmethod=marker 
