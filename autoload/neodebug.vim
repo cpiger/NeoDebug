@@ -1,11 +1,10 @@
 """""""""""""""""""""""""""""""""""""""""""""""""""""""
 " NeoDebug - NeoDebug 
 " Console
-" Breakpoints
-" Locals
-" StackFrame
-" Threads
-" Registers
+" Locals / Registers
+" StackFrame / Threads
+" Breakpoints / Disassemble
+" Expressions / Watchpoints
 " Maintainer: scott (cpiger@qq.com)
 "
 """""""""""""""""""""""""""""""""""""""""""""""""""""""

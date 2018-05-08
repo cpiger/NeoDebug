@@ -1525,6 +1525,7 @@ endfunction
 
 command! -nargs=* -complete=file NeoDebug :call NeoDebug(<q-args>)
 command! -nargs=* -complete=file NeoDebugStop :call NeoDebugStop(<q-args>)
+
 command!  ToggleConsole :call neodebug#ToggleConsoleWindow()
 command!  OpenConsole :call neodebug#UpdateConsoleWindow()
 command!  OpenLocals :call neodebug#UpdateLocalsWindow()
