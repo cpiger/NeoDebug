@@ -914,6 +914,7 @@ function! NeoDebugExprPrint(expr)
     endw
 
     let value = 1
+    let s:value_line = ''
     let output = ch_readraw(s:neodbg_chan)
     while output != g:neodbg_prompt
         " echomsg "output".output
@@ -924,9 +925,12 @@ function! NeoDebugExprPrint(expr)
         let output = substitute(output, ':\\t', ":\t\t", 'g')
         let output = substitute(output, '\\"', '"', 'g')
         let output = substitute(output, '\\\\', '\\', 'g')
-        let output = substitute(output, '\\n\|\\032\\032', '', 'g')
-        let output = strpart(output, 2, strlen(output)-3)
-        call add(g:exprs_value_lines, output)
+        let s:value_line .= strpart(output, 2, strlen(output)-3)
+        if output =~ '\\n"\_$'
+            let s:value_line = substitute(s:value_line, '\\n\|\\032\\032', '', 'g')
+            call add(g:exprs_value_lines, s:value_line)
+            let s:value_line = ''
+        endif
         let output = ch_readraw(s:neodbg_chan)
     endw
 

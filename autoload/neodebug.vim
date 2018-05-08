@@ -1432,12 +1432,12 @@ function! neodebug#UpdateExpressionsWindow()
                     let value = '--N/A--'
                     keepj call setline(iline,expr.' = '.value)
                 else
-                    " for v in g:exprs_value_lines
-                        " echomsg "v".v
-                    " endfor
+                    for v in g:exprs_value_lines
+                        echomsg "v".v
+                    endfor
                     let value = strpart(g:exprs_value_lines[0], stridx(g:exprs_value_lines[0], ' ')+2 )
                     keepj call setline(iline,expr.' = '.value)
-                    for othervalue in g:exprs_value_lines[1:-3]
+                    for othervalue in g:exprs_value_lines[1:-1]
                         " echomsg "ilinemid".iline
                         let iline = iline + 1
                         keepj call setline(iline, othervalue)
