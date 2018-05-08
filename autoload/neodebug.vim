@@ -1424,7 +1424,7 @@ function! neodebug#UpdateExpressionsWindow()
             " echomsg "linetext".linetext
             let expr  = substitute(linetext,'^\(\S*\)\s*=.*\n\=$','\1','')
             if expr == linetext
-                echomsg "Expressions no space start please!"
+                " echomsg "Expressions no space start please!"
             else
                 " echomsg "expr:".expr
                 let value = NeoDebugExprPrint(expr)
@@ -1432,9 +1432,9 @@ function! neodebug#UpdateExpressionsWindow()
                     let value = '--N/A--'
                     keepj call setline(iline,expr.' = '.value)
                 else
-                    for v in g:exprs_value_lines
-                        echomsg "v".v
-                    endfor
+                    " for v in g:exprs_value_lines
+                        " echomsg "v".v
+                    " endfor
                     let value = strpart(g:exprs_value_lines[0], stridx(g:exprs_value_lines[0], ' ')+2 )
                     keepj call setline(iline,expr.' = '.value)
                     for othervalue in g:exprs_value_lines[1:-1]
