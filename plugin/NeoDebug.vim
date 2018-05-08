@@ -492,7 +492,7 @@ function! s:HandleOutput(chan, msg)
 
 
     " Handle update window
-    if  (s:mode == 'u') && ( "info breakpoints" == strpart(a:msg, 2, strlen("info breakpoints")) || "disassemble" == strpart(a:msg, 2, strlen("disassemble")) || "info locals" == strpart(a:msg, 2, strlen("info locals")) || "backtrace" == strpart(a:msg, 2, strlen("backtrace")) || "info threads" == strpart(a:msg, 2, strlen("info threads"))|| "info registers" == strpart(a:msg, 2, strlen("info registers")) || "info watchpoints" == strpart(a:msg, 2, strlen("info watchpoints")) || "-data-evaluate-expression" == strpart(s:comm_msg, 2, strlen("-data-evaluate-expression")) )
+    if  (s:mode == 'u') && ( "info breakpoints" == strpart(a:msg, 2, strlen("info breakpoints")) || "disassemble" == strpart(a:msg, 2, strlen("disassemble")) || "info locals" == strpart(a:msg, 2, strlen("info locals")) || "backtrace" == strpart(a:msg, 2, strlen("backtrace")) || "info threads" == strpart(a:msg, 2, strlen("info threads"))|| "info registers" == strpart(a:msg, 2, strlen("info registers")) || "info watchpoints" == strpart(a:msg, 2, strlen("info watchpoints")) || "-data-evaluate-expression" == strpart(s:comm_msg, 2, strlen("-data-evaluate-expression")) || "print" == strpart(s:comm_msg, 2, strlen("print")) )
         let s:updateinfo_skip_flag = 1
     endif
 
@@ -525,6 +525,10 @@ function! s:HandleOutput(chan, msg)
             endif
 
             if "-data-evaluate-expression" == strpart(s:comm_msg, 2, strlen("-data-evaluate-expression"))
+                call neodebug#GotoExpressionsWindow()
+            endif
+
+            if "print" == strpart(s:comm_msg, 2, strlen("print"))
                 call neodebug#GotoExpressionsWindow()
             endif
 
@@ -598,6 +602,12 @@ function! s:HandleOutput(chan, msg)
     endif
 
     if  "-data-evaluate-expression" == strpart(s:comm_msg, 2, strlen("info watchpoints"))  && ( s:comm_msg =~  g:neodbg_prompt)
+        let s:updateinfo_skip_flag = 0
+        let s:comm_msg = ''
+        return
+    endif
+
+    if  "print" == strpart(s:comm_msg, 2, strlen("print"))  && ( s:comm_msg =~  g:neodbg_prompt)
         let s:updateinfo_skip_flag = 0
         let s:comm_msg = ''
         return
@@ -887,6 +897,83 @@ function! NeoDebugExprEval(expr)
 
 endfunction
 
+let g:exprs_value_lines = []
+function! NeoDebugExprPrint(expr)
+    let s:evalForExprResult = ''
+    " call s:SendEval(a:expr)
+    call NeoDebugSendCommand('print ' . a:expr, 'u')
+    let s:evalexpr = a:expr
+
+    let output = ch_readraw(s:neodbg_chan)
+    while 1
+        " if output  =~ '^\^done,value=' || output =~ '^\^error,msg='
+        if output  =~ '^&"print '
+            break
+        endif
+        let output = ch_readraw(s:neodbg_chan)
+    endw
+
+    let value = 1
+    let output = ch_readraw(s:neodbg_chan)
+    while output != g:neodbg_prompt
+        " echomsg "output".output
+        if output =~ '\^error,msg='
+            let value = 0
+        endif
+        let output = substitute(output, '\~"\\t', "\~\"\t\t", 'g')
+        let output = substitute(output, ':\\t', ":\t\t", 'g')
+        let output = substitute(output, '\\"', '"', 'g')
+        let output = substitute(output, '\\\\', '\\', 'g')
+        let output = substitute(output, '\\n\|\\032\\032', '', 'g')
+        let output = strpart(output, 2, strlen(output)-3)
+        call add(g:exprs_value_lines, output)
+        let output = ch_readraw(s:neodbg_chan)
+    endw
+
+    " echomsg "output".output
+    " if !empty(g:exprs_value_lines)
+        " for m in g:exprs_value_lines
+            " echomsg "m".m
+        " endfor
+    " endif
+
+    return value
+
+    " if s:evalForExprResult == ''
+       " let s:evalForExprResult =  value
+    " else
+       " let s:evalForExprResult .= ' = ' . value
+    " endif
+
+    "if s:evalForExprResult == ''
+    "    let s:evalForExprResult = s:evalexpr . ': ' . value
+    "else
+    "    let s:evalForExprResult .= ' = ' . value
+    "endif
+
+    "if s:evalexpr[0] != '*' && value =~ '^0x' && value != '0x0' && value !~ '"$'
+    "    " Looks like a pointer, also display what it points to.
+    "    let s:ignoreEvalError = 1
+    "    call s:SendEval('*' . s:evalexpr)
+
+    "    let output = ch_readraw(s:neodbg_chan)
+    "    let alloutput = ''
+    "    while output != g:neodbg_prompt
+    "        let alloutput .= output
+    "        let output = ch_readraw(s:neodbg_chan)
+    "    endw
+
+    "    let value = substitute(alloutput, '.*value="\(.*\)"', '\1', '')
+    "    let value = substitute(value, '\\"', '"', 'g')
+    "    let value = substitute(value, '\\n\s*', '', 'g')
+
+    "    let s:evalForExprResult .= ' ' . value
+
+    "endif
+
+    " return s:evalForExprResult
+
+endfunction
 
 
 let s:neodbg_complete_flag = 0

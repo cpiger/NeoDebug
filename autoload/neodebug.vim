@@ -1047,6 +1047,7 @@ function! neodebug#OpenExpressions()
 
     setlocal foldcolumn=2
     setlocal foldmarker={,}
+    setlocal foldtext=NeoDebugFoldTextExpr()
     setlocal foldmethod=marker
 
     " au InsertLeave {__Expressions__}  call neodebug#UpdateExpressionsWindow()
@@ -1417,17 +1418,36 @@ function! neodebug#UpdateExpressionsWindow()
 
     if line("$") != 1 || getline(1) != ""
         " Expression buffer not empty
-        let iline= 1
+        let iline = 1
         while iline <= line("$")
+            " echomsg "ilinestart".iline
             let linetext = getline(iline)
-            if linetext =~ '='
-                let expr  = substitute(linetext,'^\s*\(\S*\)\s*=.*\n\=$','\1','')
+            " echomsg "linetext".linetext
+            let expr  = substitute(linetext,'^\(\S*\)\s*=.*\n\=$','\1','')
+            if expr == linetext
+                echomsg "Expressions no space start please!"
+            else
                 " echomsg "expr:".expr
-                let value = NeoDebugExprEval(expr)
-                " echomsg "value:".value
-                keepj call setline(iline,expr.' = '.value)
+                let value = NeoDebugExprPrint(expr)
+                if value == 0
+                    let value = '--N/A--'
+                    keepj call setline(iline,expr.' = '.value)
+                else
+                    " for v in g:exprs_value_lines
+                        " echomsg "v".v
+                    " endfor
+                    let value = strpart(g:exprs_value_lines[0], stridx(g:exprs_value_lines[0], ' ')+2 )
+                    keepj call setline(iline,expr.' = '.value)
+                    for othervalue in g:exprs_value_lines[1:-3]
+                        " echomsg "ilinemid".iline
+                        let iline = iline + 1
+                        keepj call setline(iline, othervalue)
+                    endfor
+                endif
+                let g:exprs_value_lines = []
             endif
             let iline = iline + 1
+            " echomsg "ilineend".iline
         endwhile
     endif
 endfunction

@@ -81,6 +81,9 @@ See Screenshot.
     :OpenThreads       "open  [info threads] window
     :OpenBreaks        "open  [info breakpoints] window
     :OpenDisas         "open  [disassemble] window
+    :OpenExpressions   "open  [Exressions] window
+    :OpenWatchs        "open  [info watchpoints] window
+
 
     :CloseLocals       "close [info locals] window
     :CloseRegisters    "close [info registers] window
@@ -88,6 +91,8 @@ See Screenshot.
     :CloseThreads      "close [info threads] window
     :CloseBreaks       "close [info breakpoints] window
     :CloseDisas        "close [disassemble] window
+    :CloseExpressions  "close [Exressions] window       
+    :CloseWatchs       "close [info watchpoints] window 
 
 
 The following shortcuts is applied that is similar to MSVC: 
@@ -118,13 +123,11 @@ Options:
 
 1. Breakpoints disable/enable
 
-2. Watch window/ Expression window
+2. vim swap file notification
 
-3. vim swap file notification
+3. source file changed notification and update breakpoints
 
-4. source file changed notification and update breakpoints
-
-5. Options add:
+4. Options add:
    info windows group customized.
 
 
