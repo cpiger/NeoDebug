@@ -1415,11 +1415,12 @@ function! neodebug#UpdateExpressionsWindow()
     let g:neodbg_openwatchs_default = 0
     call neodebug#GotoExpressionsWindow()
 
+    let s:expr_lines = []
+
     if line("$") != 1 || getline(1) != ""
         " Expression buffer not empty
         let iline = 1
         while iline <= line("$")
-            " echomsg "ilinestart".iline
             let linetext = getline(iline)
             " echomsg "linetext".linetext
             let expr  = substitute(linetext,'^\(\S*\)\s*=.*\n\=$','\1','')
@@ -1427,27 +1428,34 @@ function! neodebug#UpdateExpressionsWindow()
                 " echomsg "Expressions no space start please!"
             else
                 " echomsg "expr:".expr
-                let value = NeoDebugExprPrint(expr)
-                if value == 0
-                    let value = '--N/A--'
-                    keepj call setline(iline,expr.' = '.value)
-                else
-                    " for v in g:exprs_value_lines
-                        " echomsg "v".v
-                    " endfor
-                    let value = strpart(g:exprs_value_lines[0], stridx(g:exprs_value_lines[0], ' ')+2 )
-                    keepj call setline(iline,expr.' = '.value)
-                    for othervalue in g:exprs_value_lines[1:-1]
-                        " echomsg "ilinemid".iline
-                        let iline = iline + 1
-                        keepj call setline(iline, othervalue)
-                    endfor
-                endif
-                let g:exprs_value_lines = []
+                call add(s:expr_lines, expr)
             endif
             let iline = iline + 1
-            " echomsg "ilineend".iline
         endwhile
+
+        silent exec '0,' . line("$") . 'd _'
+
+        let jline = 1
+        for expr in s:expr_lines
+            " echomsg "expr:".expr
+            let value = NeoDebugExprPrint(expr)
+            if value == 0
+                let value = '--N/A--'
+                keepj call setline(jline,expr.' = '.value)
+            else
+                " for v in g:exprs_value_lines
+                " echomsg "v".v
+                " endfor
+                let value = strpart(g:exprs_value_lines[0], stridx(g:exprs_value_lines[0], ' ')+2 )
+                keepj call setline(jline,expr.' = '.value)
+                for othervalue in g:exprs_value_lines[1:-1]
+                    let jline = jline + 1
+                    keepj call setline(jline, othervalue)
+                endfor
+            endif
+            let g:exprs_value_lines = []
+            let jline = jline + 1
+        endfor
     endif
 endfunction
 
