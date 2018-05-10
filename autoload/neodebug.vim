@@ -342,12 +342,17 @@ function! neodebug#OpenLocals()
     setlocal foldtext=NeoDebugFoldTextExpr()
     setlocal foldmarker={,}
     setlocal foldmethod=marker
+    setlocal foldmethod=manual
 
 
     call neodebug#SetWindowSytaxHilight()
 
-    nnoremap <buffer> <silent> <CR> :call NeoDebug(getline('.'), 'n')<cr>
-    nmap <buffer> <silent> <2-LeftMouse> <cr>
+    nmap <buffer> <silent> <LeftMouse> <cr>
+    " nnoremap <buffer> <silent> <CR> zA
+    nnoremap <buffer> <silent> <expr> <cr> foldclosed(line('.')) == -1 ?  "zf%" : "zO"
+
+    " exec "normal gg"
+    " let s:neodbg_save_local_cursor = getpos(".")
 
 endfunction
 " Local window
@@ -381,15 +386,18 @@ function neodebug#CloseLocals()
 endfunction
 
 function neodebug#CloseLocalsWindow()
+    let curwinid = win_getid(winnr())
     let winnr = bufwinnr(g:neodbg_locals_name)
     if winnr != -1
         call neodebug#GotoLocalsWindow()
         let s:neodbg_save_local_cursor = getpos(".")
         close
         let s:neodbg_locals_opened = 0
+        call win_gotoid(curwinid)
         return 1
     endif
     let s:neodbg_locals_opened = 0
+    call win_gotoid(curwinid)
     return 0
 endfunction
 
@@ -466,9 +474,6 @@ function! neodebug#OpenRegisters()
 
     call neodebug#SetWindowSytaxHilight()
 
-    nnoremap <buffer> <silent> <CR> :call NeoDebug(getline('.'), 'n')<cr>
-    nmap <buffer> <silent> <2-LeftMouse> <cr>
-
 endfunction
 
 " Registers window
@@ -499,13 +504,16 @@ function neodebug#CloseRegisters()
     call neodebug#CloseRegistersWindow()
 endfunction
 function neodebug#CloseRegistersWindow()
+    let curwinid = win_getid(winnr())
     let winnr = bufwinnr(g:neodbg_registers_name)
     if winnr != -1
         call neodebug#GotoRegistersWindow()
         let s:neodbg_save_register_cursor = getpos(".")
         close
+        call win_gotoid(curwinid)
         return 1
     endif
+    call win_gotoid(curwinid)
     return 0
 endfunction
 
@@ -620,13 +628,16 @@ function neodebug#CloseStackFrames()
 endfunction
 
 function neodebug#CloseStackFramesWindow()
+    let curwinid = win_getid(winnr())
     let winnr = bufwinnr(g:neodbg_stackframes_name)
     if winnr != -1
         call neodebug#GotoStackFramesWindow()
         let s:neodbg_save_stack_cursor = getpos(".")
         close
+        call win_gotoid(curwinid)
         return 1
     endif
+    call win_gotoid(curwinid)
     return 0
 endfunction
 
@@ -737,13 +748,16 @@ function neodebug#CloseThreads()
     call neodebug#CloseThreadsWindow()
 endfunction
 function neodebug#CloseThreadsWindow()
+    let curwinid = win_getid(winnr())
     let winnr = bufwinnr(g:neodbg_threads_name)
     if winnr != -1
         call neodebug#GotoThreadsWindow()
         let s:neodbg_save_thread_cursor = getpos(".")
         close
+        call win_gotoid(curwinid)
         return 1
     endif
+    call win_gotoid(curwinid)
     return 0
 endfunction
 
@@ -852,13 +866,16 @@ function neodebug#CloseBreakpoints()
     call neodebug#CloseBreakpointsWindow()
 endfunction
 function neodebug#CloseBreakpointsWindow()
+    let curwinid = win_getid(winnr())
     let winnr = bufwinnr(g:neodbg_breakpoints_name)
     if winnr != -1
         call neodebug#GotoBreakpointsWindow()
         let s:neodbg_save_break_cursor = getpos(".")
         close
+        call win_gotoid(curwinid)
         return 1
     endif
+    call win_gotoid(curwinid)
     return 0
 endfunction
 
@@ -967,13 +984,16 @@ function neodebug#CloseDisas()
 endfunction
 
 function neodebug#CloseDisasWindow()
+    let curwinid = win_getid(winnr())
     let winnr = bufwinnr(g:neodbg_disas_name)
     if winnr != -1
         call neodebug#GotoDisasWindow()
         let s:neodbg_save_disas_cursor = getpos(".")
         close
+        call win_gotoid(curwinid)
         return 1
     endif
+    call win_gotoid(curwinid)
     return 0
 endfunction
 
@@ -1048,14 +1068,16 @@ function! neodebug#OpenExpressions()
     setlocal foldmarker={,}
     setlocal foldtext=NeoDebugFoldTextExpr()
     setlocal foldmethod=marker
+    setlocal foldmethod=manual
 
     " au InsertLeave {__Expressions__}  call neodebug#UpdateExpressionsWindow()
     au InsertLeave <buffer> call neodebug#UpdateExpressionsWindow()
 
     call neodebug#SetWindowSytaxHilight()
 
-    nnoremap <buffer> <silent> <CR> :call NeoDebug(getline('.'), 'n')<cr>
-    nmap <buffer> <silent> <2-LeftMouse> <cr>
+    nmap <buffer> <silent> <LeftMouse> <cr>
+    " nnoremap <buffer> <silent> <CR> zA
+    nnoremap <buffer> <silent> <expr> <cr> foldclosed(line('.')) == -1 ?  "zf%" : "zO"
 
 endfunction
 " Expressions window
@@ -1086,13 +1108,16 @@ function neodebug#CloseExpressions()
     call neodebug#CloseExpressionsWindow()
 endfunction
 function neodebug#CloseExpressionsWindow()
+    let curwinid = win_getid(winnr())
     let winnr = bufwinnr(g:neodbg_expressions_name)
     if winnr != -1
         call neodebug#GotoExpressionsWindow()
         let s:neodbg_save_expr_cursor = getpos(".")
         close
+        call win_gotoid(curwinid)
         return 1
     endif
+    call win_gotoid(curwinid)
     return 0
 endfunction
 
@@ -1201,13 +1226,16 @@ function neodebug#CloseWatchpoints()
 endfunction
 
 function neodebug#CloseWatchpointsWindow()
+    let curwinid = win_getid(winnr())
     let winnr = bufwinnr(g:neodbg_watchpoints_name)
     if winnr != -1
         call neodebug#GotoWatchpointsWindow()
         let s:neodbg_save_watch_cursor = getpos(".")
         close
+        call win_gotoid(curwinid)
         return 1
     endif
+    call win_gotoid(curwinid)
     return 0
 endfunction
 
@@ -1792,7 +1820,8 @@ endfunction
 
 function! neodebug#SetBufDisable()
     " make it not-editable and close the buffer
-    setlocal noma ro cul nomod
+    " nomod
+    setlocal noma ro cul 
 endfunction
 
 " vim: set foldmethod=marker 

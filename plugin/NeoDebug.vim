@@ -557,10 +557,14 @@ function! s:HandleOutput(chan, msg)
         " echomsg "updateinfo_line::".updateinfo_line
         if updateinfo_line == g:neodbg_prompt
             if neodbg_winnr != -1
-                call neodebug#GotoConsoleWindow()
+                if -1 == match(histget("cmd", -1), 'OpenConsole\|OpenLocals\|OpenRegisters\|OpenStacks\|OpenThreads\|OpenBreaks\|OpenDisas\|OpenExpressions\|OpenWatchs')
+                    call neodebug#GotoConsoleWindow()
+                endif
             endif
             "back to current window
-            call win_gotoid(s:cur_wid)
+            if -1 == match(histget("cmd", -1), 'OpenConsole\|OpenLocals\|OpenRegisters\|OpenStacks\|OpenThreads\|OpenBreaks\|OpenDisas\|OpenExpressions\|OpenWatchs')
+                call win_gotoid(s:cur_wid)
+            endif
         endif
     endif
 
@@ -1125,11 +1129,13 @@ function! NeoDebugSendCommand(cmd, ...)  " [mode]
         " echomsg "<GDB1>:[".usercmd."][mode:".mode."]"
         let s:neodbg_sendcmd_flag = 0
     else
+        "save commands 
         if usercmd != s:neodbg_cmd_historys[-1] && usercmd != ''
             " echomsg "<GDB2>:[".usercmd."][mode:".mode."]"
             call add(s:neodbg_cmd_historys, usercmd)
         endif
 
+        "whether print command in console command line
         if mode == '' && s:neodbg_init_flag == 0
             let s:neodbg_sendcmd_flag = 1
         endif
@@ -1142,7 +1148,6 @@ function! NeoDebugSendCommand(cmd, ...)  " [mode]
         endif
 
     endif
-
 
     if g:neodbg_debuginfo == 1
         silent echohl ModeMsg
