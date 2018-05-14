@@ -122,6 +122,7 @@ Options:
 ##FAQ
 
 Q: Where to get my program's Input and Output ?
+
 A: You can use 'tty' command to redirected program's input and output on linux.
    A similar command under Windows is set new-console, that is default on NeoDebug.
 
