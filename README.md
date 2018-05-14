@@ -119,6 +119,12 @@ Options:
     let g:neodbg_openlocals_default    = 1   " Open locals window, Default: 1
     let g:neodbg_openregisters_default = 0   " Open registers window, Default: 0
 
+##FAQ
+
+Q: Where to get my program's Input and Output ?
+A: You can use 'tty' command to redirected program's input and output on linux.
+   A similar command under Windows is set new-console, that is default on NeoDebug.
+
 ##TODO
 
 1. Breakpoints disable/enable
