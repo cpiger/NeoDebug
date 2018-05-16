@@ -24,6 +24,50 @@ if !exists('g:neodbg_enable_help')
     let g:neodbg_enable_help = 1
 endif
 
+if !exists('g:neodbg_keymap_toggle_breakpoint')
+    let g:neodbg_keymap_toggle_breakpoint = '<F9>'
+endif
+
+if !exists('g:neodbg_keymap_next')
+    let g:neodbg_keymap_next = '<F10>'
+endif
+
+if !exists('g:neodbg_keymap_run_to_cursor ')
+    let g:neodbg_keymap_run_to_cursor = '<C-F10>'
+endif
+
+if !exists('g:neodbg_keymap_jump')
+    let g:neodbg_keymap_jump = '<C-S-F10>'
+endif
+
+if !exists('g:neodbg_keymap_step_into')
+    let g:neodbg_keymap_step_into = '<F11>'
+endif
+if !exists('g:neodbg_keymap_step_out')
+    let g:neodbg_keymap_step_out = '<S-F11>'
+endif
+
+if !exists('g:neodbg_keymap_continue')
+    let g:neodbg_keymap_continue = '<F5>'
+endif
+
+if !exists('g:neodbg_keymap_print_variable')
+    let g:neodbg_keymap_print_variable = '<C-P>'
+endif
+
+if !exists('g:neodbg_keymap_stop_debugging')
+    let g:neodbg_keymap_stop_debugging = '<S-F5>'
+endif
+
+if !exists('g:neodbg_keymap_toggle_console_win')
+    let g:neodbg_keymap_toggle_console_win = '<F6>'
+endif
+
+if !exists('g:neodbg_keymap_terminate_debugger')
+    let g:neodbg_keymap_terminate_debugger = '<C-C>'
+endif
+
+
 
 if !exists('g:neodbg_openlocals_default')
     let g:neodbg_openlocals_default    = 1
@@ -1521,7 +1565,7 @@ function! NeoDebugJump()
     call NeoDebug("ju ".key)
 endfunction
 
-function! NeoDebugRunToCursur()
+function! NeoDebugRunToCursor()
     call win_gotoid(s:startwin)
     let key = s:CursorPos()
     call NeoDebug("tb ".key)

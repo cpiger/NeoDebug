@@ -19,18 +19,18 @@ let s:help_text = s:help_text_short
 function s:UpdateHelpText()
     if s:help_open
         let s:help_text = [
-            \ '<F5> 	- run or continue (c)',
-            \ '<S-F5> 	- stop debugging (kill)',
-            \ '<F6> 	- toggle console window',
-            \ '<F10> 	- next',
-            \ '<F11> 	- step into',
-            \ '<S-F11>  - step out (finish)',
-            \ '<C-F10>	- run to cursor (tb and c)',
-            \ '<F9> 	- toggle breakpoint on current line',
-            \ '\ju or <C-S-F10> - set next statement (tb and jump)',
-            \ '<C-P>    - view variable under the cursor (.p)',
-            \ '<TAB>    - trigger complete ',
-            \ '<C-C>    - terminate debugger job',
+            \ g:neodbg_keymap_continue.' 	 - run or continue (c)',
+            \ g:neodbg_keymap_stop_debugging.' 	 - stop debugging (kill)',
+            \ g:neodbg_keymap_toggle_console_win.' 	 - toggle console window',
+            \ g:neodbg_keymap_next.' 	 - next',
+            \ g:neodbg_keymap_step_into.'	 - step into',
+            \ g:neodbg_keymap_step_out.'  - step out (finish)',
+            \ g:neodbg_keymap_run_to_cursor.'	 - run to cursor (tb and c)',
+            \ g:neodbg_keymap_toggle_breakpoint.' 	 - toggle breakpoint on current line',
+            \ g:neodbg_keymap_jump.' - set next statement (tb and jump)',
+            \ g:neodbg_keymap_print_variable.'     - view variable under the cursor (.p)',
+            \ '<TAB>     - trigger complete ',
+            \ g:neodbg_keymap_terminate_debugger.'     - terminate debugger job',
             \ ]
     else
         let s:help_text = s:help_text_short
@@ -1680,76 +1680,67 @@ function! neodebug#InstallShotcut()
     nnoremap <buffer> <silent> <CR> :call NeoDebug(getline('.'), 'n')<cr>
     nmap <buffer> <silent> <2-LeftMouse> <cr>
 
-    nmap <silent> <F9>	         :call NeoDebugToggleBreakpoint()<CR>
-    map! <silent> <F9>	         <c-o>:call NeoDebugToggleBreakpoint()<CR>
 
-    nmap <silent> <Leader>ju	 :call NeoDebugJump()<CR>
-    nmap <silent> <C-S-F10>		 :call NeoDebugJump()<CR>
-    nmap <silent> <C-F10>        :call NeoDebugRunToCursur()<CR>
-    map! <silent> <C-S-F10>		 <c-o>:call NeoDebugJump()<CR>
-    map! <silent> <C-F10>        <c-o>:call NeoDebugRunToCursur()<CR>
-    nmap <silent> <F6>           :call neodebug#ToggleConsoleWindow()<CR>
-    imap <silent> <F6>           <c-o>:call neodebug#ToggleConsoleWindow()<CR>
-    nmap <silent> <C-P>	         :NeoDebug p <C-R><C-W><CR>
-    vmap <silent> <C-P>	         y:NeoDebug p <C-R>0<CR>
-    nmap <silent> <Leader>pr	 :NeoDebug p <C-R><C-W><CR>
-    vmap <silent> <Leader>pr	 y:NeoDebug p <C-R>0<CR>
-    nmap <silent> <Leader>bt	 :NeoDebug bt<CR>
+    exe printf("nmap <silent> %s :call NeoDebugToggleBreakpoint()<cr>", g:neodbg_keymap_toggle_breakpoint)
+    exe printf("map! <silent> %s <c-o>:call NeoDebugToggleBreakpoint()<cr>", g:neodbg_keymap_toggle_breakpoint)
+    exe printf("nmap <silent> %s :NeoDebug n<cr>", g:neodbg_keymap_next)
+    exe printf("map! <silent> %s <c-o>:NeoDebug n<cr>", g:neodbg_keymap_next)
+    exe printf("nmap <silent> %s :call NeoDebugRunToCursor()<cr>", g:neodbg_keymap_run_to_cursor)
+    exe printf("map! <silent> %s <c-o>:call NeoDebugRunToCursor()<cr>", g:neodbg_keymap_run_to_cursor)
 
-    nmap <silent> <F5>    :NeoDebug c<cr>
-    nmap <silent> <S-F5>  :NeoDebug k<cr>
-    nmap <silent> <F10>   :NeoDebug n<cr>
-    nmap <silent> <F11>   :NeoDebug s<cr>
-    nmap <silent> <S-F11> :NeoDebug finish<cr>
-    noremap <silent> <c-c> :NeoDebugStop<cr>
-
-    map! <silent> <F5>    <c-o>:NeoDebug c<cr>
-    map! <silent> <S-F5>  <c-o>:NeoDebug k<cr>
-    map! <silent> <F10>   <c-o>:NeoDebug n<cr>
-    map! <silent> <F11>   <c-o>:NeoDebug s<cr>
-    map! <silent> <S-F11> <c-o>:NeoDebug finish<cr>
+    exe printf("nmap <silent> %s :call NeoDebugJump()<cr>", g:neodbg_keymap_jump)
+    exe printf("map! <silent> %s <c-o>:call NeoDebugJump()<cr>", g:neodbg_keymap_jump)
+    exe printf("nmap <silent> %s :NeoDebug s<cr>", g:neodbg_keymap_step_into)
+    exe printf("map! <silent> %s <c-o>:NeoDebug s<cr>", g:neodbg_keymap_step_into)
+    exe printf("nmap <silent> %s :NeoDebug finish<cr>", g:neodbg_keymap_step_out)
+    exe printf("map! <silent> %s <c-o>:NeoDebug finish<cr>", g:neodbg_keymap_step_out)
+    exe printf("nmap <silent> %s :NeoDebug c<cr>", g:neodbg_keymap_continue)
+    exe printf("map! <silent> %s <c-o>:NeoDebug c<cr>", g:neodbg_keymap_continue)
+    exe printf("nmap <silent> %s :NeoDebug p <C-R><C-W><cr>", g:neodbg_keymap_print_variable)
+    exe printf("vmap <silent> %s y:NeoDebug p <C-R>0<cr>", g:neodbg_keymap_print_variable)
+    exe printf("nmap <silent> %s :NeoDebug k<cr>", g:neodbg_keymap_stop_debugging)
+    exe printf("map! <silent> %s <c-o>:NeoDebug k<cr>", g:neodbg_keymap_stop_debugging)
+    exe printf("nmap <silent> %s :call neodebug#ToggleConsoleWindow()<cr>", g:neodbg_keymap_toggle_console_win)
+    exe printf("map! <silent> %s <c-o>:call neodebug#ToggleConsoleWindow()<cr>", g:neodbg_keymap_toggle_console_win)
+    exe printf("noremap <silent> %s :NeoDebugStop<cr>", g:neodbg_keymap_terminate_debugger)
 
 endfunction
 
 function! neodebug#DeleteShotcut()
     nunmap K
-    unmap <F9>
-    unmap <Leader>ju
-    unmap <C-S-F10>
-    unmap <C-F10>
-    unmap <C-P>
-    unmap <Leader>pr
-    unmap <Leader>bt
-
-    unmap <F5>
-    unmap <S-F5>
-    unmap <F10>
-    unmap <F11>
-    unmap <S-F11>
+    
+    exec printf("unmap %s", g:neodbg_keymap_toggle_breakpoint)
+    exec printf("unmap %s", g:neodbg_keymap_jump)
+    exec printf("unmap %s", g:neodbg_keymap_run_to_cursor)
+    exec printf("unmap %s", g:neodbg_keymap_print_variable)
+    exec printf("unmap %s", g:neodbg_keymap_continue)
+    exec printf("unmap %s", g:neodbg_keymap_stop_debugging)
+    exec printf("unmap %s", g:neodbg_keymap_next)
+    exec printf("unmap %s", g:neodbg_keymap_step_into)
+    exec printf("unmap %s", g:neodbg_keymap_step_out)
 endfunction
 
 function! neodebug#InstallMenu()
-    amenu NeoDebug.Run/Continue<tab>F5 					:NeoDebug c<CR>
-    amenu NeoDebug.Step\ into<tab>F11					:NeoDebug s<CR>
-    amenu NeoDebug.Next<tab>F10							:NeoDebug n<CR>
-    amenu NeoDebug.Step\ out<tab>Shift-F11				:NeoDebug finish<CR>
-    amenu NeoDebug.Run\ to\ cursor<tab>Ctrl-F10			:call NeoDebugRunToCursur()<CR>
-    amenu NeoDebug.Stop\ debugging\ (Kill)<tab>Shift-F5	:NeoDebug k<CR>
-    amenu NeoDebug.-sep1- :
+    exec printf("amenu NeoDebug.Run/Continue<tab>%s 					:NeoDebug c<CR>", g:neodbg_keymap_continue)
+    exec printf("amenu NeoDebug.Step\\ Into<tab>%s					:NeoDebug s<CR>", g:neodbg_keymap_step_into)
+    exec printf("amenu NeoDebug.Next<tab>%s							:NeoDebug n<CR>", g:neodbg_keymap_next)
+    exec printf("amenu NeoDebug.Step\\ out<tab>%s				:NeoDebug finish<CR>", g:neodbg_keymap_step_out)
+    exec printf("amenu NeoDebug.Run\\ to\\ cursor<tab>%s			:call NeoDebugRunToCursor()<CR>", g:neodbg_keymap_run_to_cursor)
+    exec printf("amenu NeoDebug.Stop\\ debugging\\ (Kill)<tab>%s	:NeoDebug k<CR>", g:neodbg_keymap_stop_debugging)
+    exec printf("amenu NeoDebug.-sep1- :")
 
-    amenu NeoDebug.Show\ callstack<tab>\\bt				:call NeoDebug("where")<CR>
-    amenu NeoDebug.Set\ next\ statement\ (Jump)<tab>Ctrl-Shift-F10\ or\ \\ju 	:call NeoDebugJump()<CR>
-    amenu NeoDebug.Top\ frame 						:call NeoDebug("frame 0")<CR>
-    amenu NeoDebug.Callstack\ up 					:call NeoDebug("up")<CR>
-    amenu NeoDebug.Callstack\ down 					:call NeoDebug("down")<CR>
-    amenu NeoDebug.-sep2- :
+    exec printf("amenu NeoDebug.Show\\ callstack				:call NeoDebug('where')<CR>")
+    exec printf("amenu NeoDebug.Set\\ next\\ statement\\ (Jump)<tab>%s 	:call NeoDebugJump()<CR>", g:neodbg_keymap_jump)
+    exec printf("amenu NeoDebug.Top\\ frame 						:call NeoDebug('frame 0')<CR>")
+    exec printf("amenu NeoDebug.Callstack\\ up 					:call NeoDebug('up')<CR>")
+    exec printf("amenu NeoDebug.Callstack\\ down 					:call NeoDebug('down')<CR>")
+    exec printf("amenu NeoDebug.-sep2- :")
 
-    amenu NeoDebug.Preview\ variable<tab>Ctrl-P		:NeoDebug p <C-R><C-W><CR> 
-    amenu NeoDebug.Print\ variable<tab>\\pr			:NeoDebug p <C-R><C-W><CR> 
-    amenu NeoDebug.Show\ breakpoints 				:NeoDebug info breakpoints<CR>
-    amenu NeoDebug.Show\ locals 					:NeoDebug info locals<CR>
-    amenu NeoDebug.Show\ args 						:NeoDebug info args<CR>
-    amenu NeoDebug.Quit			 					:NeoDebug q<CR>
+    exec printf("amenu NeoDebug.Print\\ variable<tab>%s		:NeoDebug p <C-R><C-W><CR> ", g:neodbg_keymap_print_variable)
+    exec printf("amenu NeoDebug.Show\\ BreakpointsWindow 				:OpenBreaks<CR>")
+    exec printf("amenu NeoDebug.Show\\ LocalsWindows 					:OpenLocals<CR>")
+    exec printf("amenu NeoDebug.Show\\ args 						:NeoDebug info args<CR>")
+    exec printf("amenu NeoDebug.Quit			 					:NeoDebug q<CR>")
 endfunction
 
 function! neodebug#DeleteMenu()
