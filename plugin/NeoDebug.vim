@@ -12,6 +12,10 @@ if !exists('g:neodbg_debugger')
     let g:neodbg_debugger = 'gdb'
 endif
 
+if !exists('g:neodbg_cmd_prefix')
+    let g:neodbg_cmd_prefix='DBG'
+endif
+
 if !exists('g:neodbg_ballonshow_with_print')
     let g:neodbg_ballonshow_with_print = 0
 endif
@@ -1579,25 +1583,24 @@ endfunction
 command! -nargs=* -complete=file NeoDebug :call NeoDebug(<q-args>)
 command! -nargs=* -complete=file NeoDebugStop :call NeoDebugStop(<q-args>)
 
-command!  ToggleConsole :call neodebug#ToggleConsoleWindow()
-command!  OpenConsole :call neodebug#UpdateConsoleWindow()
-command!  OpenLocals :call neodebug#UpdateLocalsWindow()
-command!  OpenRegisters :call neodebug#UpdateRegistersWindow()
-command!  OpenStacks :call neodebug#UpdateStackFramesWindow()
-command!  OpenThreads :call neodebug#UpdateThreadsWindow()
-command!  OpenBreaks :call neodebug#UpdateBreakpointsWindow()
-command!  OpenDisas :call neodebug#UpdateDisasWindow()
-command!  OpenExpressions :call neodebug#UpdateExpressionsWindow()
-command!  OpenWatchs :call neodebug#UpdateWatchpointsWindow()
-
-command!  CloseConsole :call neodebug#CloseConsole()
-command!  CloseLocals :call neodebug#CloseLocals()
-command!  CloseRegisters :call neodebug#CloseRegisters()
-command!  CloseStacks :call neodebug#CloseStackFrames()
-command!  CloseThreads :call neodebug#CloseThreads()
-command!  CloseBreaks :call neodebug#CloseBreakpoints()
-command!  CloseDisas :call neodebug#CloseDisas()
-command!  CloseExpressions :call neodebug#CloseExpressions()
-command!  CloseWatchs :call neodebug#CloseWatchpoints()
+execute printf('command! %s%s call neodebug#ToggleConsoleWindow()    ', g:neodbg_cmd_prefix, 'ToggleConsole')
+execute printf('command! %s%s call neodebug#UpdateConsoleWindow()    ', g:neodbg_cmd_prefix, 'OpenConsole')
+execute printf('command! %s%s call neodebug#UpdateLocalsWindow()     ', g:neodbg_cmd_prefix, 'OpenLocals')
+execute printf('command! %s%s call neodebug#UpdateRegistersWindow()  ', g:neodbg_cmd_prefix, 'OpenRegisters')
+execute printf('command! %s%s call neodebug#UpdateStackFramesWindow()', g:neodbg_cmd_prefix, 'OpenStacks')
+execute printf('command! %s%s call neodebug#UpdateThreadsWindow()    ', g:neodbg_cmd_prefix, 'OpenThreads')
+execute printf('command! %s%s call neodebug#UpdateBreakpointsWindow()', g:neodbg_cmd_prefix, 'OpenBreaks')
+execute printf('command! %s%s call neodebug#UpdateDisasWindow()      ', g:neodbg_cmd_prefix, 'OpenDisas')
+execute printf('command! %s%s call neodebug#UpdateExpressionsWindow()', g:neodbg_cmd_prefix, 'OpenExpressions')
+execute printf('command! %s%s call neodebug#UpdateWatchpointsWindow()', g:neodbg_cmd_prefix, 'OpenWatchs')
+execute printf('command! %s%s call neodebug#CloseConsole()           ', g:neodbg_cmd_prefix, 'CloseConsole')
+execute printf('command! %s%s call neodebug#CloseLocals()            ', g:neodbg_cmd_prefix, 'CloseLocals')
+execute printf('command! %s%s call neodebug#CloseRegisters()         ', g:neodbg_cmd_prefix, 'CloseRegisters')
+execute printf('command! %s%s call neodebug#CloseStackFrames()       ', g:neodbg_cmd_prefix, 'CloseStacks')
+execute printf('command! %s%s call neodebug#CloseThreads()           ', g:neodbg_cmd_prefix, 'CloseThreads')
+execute printf('command! %s%s call neodebug#CloseBreakpoints()       ', g:neodbg_cmd_prefix, 'CloseBreaks')
+execute printf('command! %s%s call neodebug#CloseDisas()             ', g:neodbg_cmd_prefix, 'CloseDisas')
+execute printf('command! %s%s call neodebug#CloseExpressions()       ', g:neodbg_cmd_prefix, 'CloseExpressions')
+execute printf('command! %s%s call neodebug#CloseWatchpoints()       ', g:neodbg_cmd_prefix, 'CloseWatchs')
 
 " vim: set foldmethod=marker 

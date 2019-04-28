@@ -71,28 +71,28 @@ See Screenshot.
 
 	:NeoDebug         "start gdb and open a gdb console buffer in vim
 
-    :OpenConsole       "open neodebug console window
-    :CloseConsole      "close neodebug console window
-    :ToggleConsole     "toggle neodebug console window
+    :DBGOpenConsole       "open neodebug console window
+    :DBGCloseConsole      "close neodebug console window
+    :DBGToggleConsole     "toggle neodebug console window
 
-    :OpenLocals        "open  [info locals] window
-    :OpenRegisters     "open  [info registers] window
-    :OpenStacks        "open  [backtrace] window
-    :OpenThreads       "open  [info threads] window
-    :OpenBreaks        "open  [info breakpoints] window
-    :OpenDisas         "open  [disassemble] window
-    :OpenExpressions   "open  [Exressions] window
-    :OpenWatchs        "open  [info watchpoints] window
+    :DBGOpenLocals        "open  [info locals] window
+    :DBGOpenRegisters     "open  [info registers] window
+    :DBGOpenStacks        "open  [backtrace] window
+    :DBGOpenThreads       "open  [info threads] window
+    :DBGOpenBreaks        "open  [info breakpoints] window
+    :DBGOpenDisas         "open  [disassemble] window
+    :DBGOpenExpressions   "open  [Exressions] window
+    :DBGOpenWatchs        "open  [info watchpoints] window
 
 
-    :CloseLocals       "close [info locals] window
-    :CloseRegisters    "close [info registers] window
-    :CloseStacks       "close [backtrace] window
-    :CloseThreads      "close [info threads] window
-    :CloseBreaks       "close [info breakpoints] window
-    :CloseDisas        "close [disassemble] window
-    :CloseExpressions  "close [Exressions] window       
-    :CloseWatchs       "close [info watchpoints] window 
+    :DBGCloseLocals       "close [info locals] window
+    :DBGCloseRegisters    "close [info registers] window
+    :DBGCloseStacks       "close [backtrace] window
+    :DBGCloseThreads      "close [info threads] window
+    :DBGCloseBreaks       "close [info breakpoints] window
+    :DBGCloseDisas        "close [disassemble] window
+    :DBGCloseExpressions  "close [Exressions] window       
+    :DBGCloseWatchs       "close [info watchpoints] window 
 
 
 The following shortcuts is applied that is similar to MSVC: 
@@ -112,12 +112,13 @@ The following shortcuts is applied that is similar to MSVC:
 
 Options:
 
-    let g:neodbg_console_height        = 15  " gdb console buffer hight, Default: 15
-    let g:neodbg_openbreaks_default    = 1   " Open breakpoints window, Default: 1
-    let g:neodbg_openstacks_default    = 0   " Open stackframes window, Default: 0
-    let g:neodbg_openthreads_default   = 0   " Open threads window, Default: 0
-    let g:neodbg_openlocals_default    = 1   " Open locals window, Default: 1
-    let g:neodbg_openregisters_default = 0   " Open registers window, Default: 0
+    let g:neodbg_cmd_prefix            = 'DBG'   " default command prefix
+    let g:neodbg_console_height        = 15      " gdb console buffer hight, Default: 15
+    let g:neodbg_openbreaks_default    = 1       " Open breakpoints window, Default: 1
+    let g:neodbg_openstacks_default    = 0       " Open stackframes window, Default: 0
+    let g:neodbg_openthreads_default   = 0       " Open threads window, Default: 0
+    let g:neodbg_openlocals_default    = 1       " Open locals window, Default: 1
+    let g:neodbg_openregisters_default = 0       " Open registers window, Default: 0
 
 Keymaps:
 
