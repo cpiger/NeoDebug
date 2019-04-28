@@ -112,13 +112,15 @@ The following shortcuts is applied that is similar to MSVC:
 
 Options:
 
-    let g:neodbg_cmd_prefix            = 'DBG'   " default command prefix
-    let g:neodbg_console_height        = 15      " gdb console buffer hight, Default: 15
-    let g:neodbg_openbreaks_default    = 1       " Open breakpoints window, Default: 1
-    let g:neodbg_openstacks_default    = 0       " Open stackframes window, Default: 0
-    let g:neodbg_openthreads_default   = 0       " Open threads window, Default: 0
-    let g:neodbg_openlocals_default    = 1       " Open locals window, Default: 1
-    let g:neodbg_openregisters_default = 0       " Open registers window, Default: 0
+    let g:neodbg_debugger              = 'gdb'           " gdb,pdb,lldb
+    let g:neodbg_gdb_path              = '/usr/bin/gdb'  " gdb path
+    let g:neodbg_cmd_prefix            = 'DBG'           " default command prefix
+    let g:neodbg_console_height        = 15              " gdb console buffer hight, Default: 15
+    let g:neodbg_openbreaks_default    = 1               " Open breakpoints window, Default: 1
+    let g:neodbg_openstacks_default    = 0               " Open stackframes window, Default: 0
+    let g:neodbg_openthreads_default   = 0               " Open threads window, Default: 0
+    let g:neodbg_openlocals_default    = 1               " Open locals window, Default: 1
+    let g:neodbg_openregisters_default = 0               " Open registers window, Default: 0
 
 Keymaps:
 

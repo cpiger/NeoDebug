@@ -12,6 +12,10 @@ if !exists('g:neodbg_debugger')
     let g:neodbg_debugger = 'gdb'
 endif
 
+if !exists('g:neodbg_gdb_path')
+    g:neodbg_gdb_path = 'gdb'
+endif
+
 if !exists('g:neodbg_cmd_prefix')
     let g:neodbg_cmd_prefix='DBG'
 endif
@@ -332,8 +336,9 @@ function! s:NeoDebugStart(cmd)
     else
         let vertical = 0
     endif
-
-    let cmd = [g:neodbg_debugger, '-quiet','-q', '-f', '--interpreter=mi2', a:cmd]
+    if g:neodbg_debugger == 'gdb'
+        let cmd = [g:neodbg_gdb_path, '-quiet','-q', '-f', '--interpreter=mi2', a:cmd]
+    endif
     " Create a hidden terminal window to communicate with gdb
     if has('nvim')
         let opts = {
@@ -1166,20 +1171,24 @@ endfunction
 let s:neodbg_quitted = 0
 let s:neodbg_sendcmd_flag = 0
 let s:usercmd = ''
-" function! NeoDebugSendCommand(cmd)
+
 function! NeoDebugSendCommand(cmd, ...)  " [mode]
-    " echomsg "<GDB>cmd:[".a:cmd."]"
+    if g:neodbg_debuginfo == 1
+        echomsg "<GDB>cmd:[".a:cmd."]"
+    endif
     let usercmd = a:cmd
     let mode = a:0>0 ? a:1 : ''
     let s:mode = mode
 
     if  mode == 'u'  ||  -1 != match(usercmd, '^complete')
-        " echomsg "<GDB1>:[".usercmd."][mode:".mode."]"
+        echomsg "<GDB1>:[".usercmd."][mode:".mode."]"
         let s:neodbg_sendcmd_flag = 0
     else
         "save commands 
         if usercmd != s:neodbg_cmd_historys[-1] && usercmd != ''
-            " echomsg "<GDB2>:[".usercmd."][mode:".mode."]"
+            if g:neodbg_debuginfo == 1
+                echomsg "<GDB2>:[".usercmd."][mode:".mode."]"
+            endif
             call add(s:neodbg_cmd_historys, usercmd)
         endif
 
