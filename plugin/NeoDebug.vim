@@ -13,7 +13,7 @@ if !exists('g:neodbg_debugger')
 endif
 
 if !exists('g:neodbg_gdb_path')
-    g:neodbg_gdb_path = 'gdb'
+   let g:neodbg_gdb_path = 'gdb'
 endif
 
 if !exists('g:neodbg_cmd_prefix')
