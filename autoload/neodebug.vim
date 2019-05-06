@@ -1672,7 +1672,7 @@ function! neodebug#InstallShotcut()
     noremap <buffer><silent> <Tab> ""
     noremap <buffer><silent> <S-Tab> ""
 
-    noremap <buffer><silent> <ESC> :call neodebug#CloseConsoleWindow()<CR>
+    nmap <buffer><silent> <ESC> :call neodebug#CloseConsoleWindow()<CR>
 
     inoremap <expr><buffer> <silent> <CR> pumvisible() ? "\<c-y><c-o>:call NeoDebug(getline('.'), 'i')<cr>" : "<c-o>:call NeoDebug(getline('.'), 'i')<cr>"
     " inoremap <buffer> <silent> <C-CR> :<c-o>:call NeoDebug("", 'i')<cr>

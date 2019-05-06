@@ -1495,12 +1495,12 @@ function! s:HandleNewBreakpoint(msg)
     catch /^Vim\%((\a\+)\)\=:E37/
         " TODO ask 
         silent echohl ModeMsg
-        echomsg "No write since last change (add ! to override)"
+        echomsg "NeoDebug: No write since last change (add ! to override)"
         silent echohl None
     catch /^Vim\%((\a\+)\)\=:E325/
         " TODO ask 
         silent echohl ModeMsg
-        echomsg "Found a swap file"
+        echomsg "NeoDebug: Found a swap file."
         silent echohl None
     endtry
 
