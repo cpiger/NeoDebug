@@ -337,7 +337,9 @@ function! s:NeoDebugStart(cmd)
         let vertical = 0
     endif
     if g:neodbg_debugger == 'gdb'
-        let cmd = [g:neodbg_gdb_path, '-quiet','-q', '-f', '--interpreter=mi2', a:cmd]
+        "-f for do not display code,
+        " let cmd = [g:neodbg_gdb_path, '-quiet', '--interpreter=mi2', a:cmd]
+        let cmd = [g:neodbg_gdb_path, '-quiet', '-f', '--interpreter=mi2', a:cmd]
     endif
     " Create a hidden terminal window to communicate with gdb
     if has('nvim')
@@ -499,7 +501,7 @@ let s:start_count = 0
 " Handle a message received from debugger
 function! s:HandleOutput(chan, msg)
     if g:neodbg_debuginfo == 1
-        echomsg "<GDB>:".a:msg."[s:mode:".s:mode."]"
+        echomsg "<GDB><HandleOutput>:".a:msg."[s:mode:".s:mode."]"
     endif
     " echomsg "s:cur_wid2".s:cur_wid
 
@@ -543,7 +545,7 @@ function! s:HandleOutput(chan, msg)
         return
     endif
 
-
+    " message should skipped to display to console
     " Handle update window
     if  (s:mode == 'u') && ( "info breakpoints" == strpart(a:msg, 2, strlen("info breakpoints")) || "disassemble" == strpart(a:msg, 2, strlen("disassemble")) || "info locals" == strpart(a:msg, 2, strlen("info locals")) || "backtrace" == strpart(a:msg, 2, strlen("backtrace")) || "info threads" == strpart(a:msg, 2, strlen("info threads"))|| "info registers" == strpart(a:msg, 2, strlen("info registers")) || "info watchpoints" == strpart(a:msg, 2, strlen("info watchpoints")) || "-data-evaluate-expression" == strpart(s:comm_msg, 2, strlen("-data-evaluate-expression")) || "print" == strpart(s:comm_msg, 2, strlen("print")) )
         let s:updateinfo_skip_flag = 1
@@ -589,6 +591,7 @@ function! s:HandleOutput(chan, msg)
                 call neodebug#GotoWatchpointsWindow()
             endif
 
+            let updateinfo_line = substitute(updateinfo_line, '\\t', "\t", 'g')
             if updateinfo_line =~ '^\~"'  
                 let updateinfo_line = substitute(updateinfo_line, '\~"\\t', "\~\"\t\t", 'g')
                 let updateinfo_line = substitute(updateinfo_line, ':\\t', ":\t\t", 'g')
@@ -678,7 +681,7 @@ function! s:HandleOutput(chan, msg)
 
 
     let debugger_line = a:msg
-
+    " message for console to display
     if debugger_line != '' && s:completer_skip_flag == 0 && s:updateinfo_skip_flag == 0
         " Handle 
         if debugger_line =~ '^\(\*stopped\|\^done,new-thread-id=\|\*running\|=thread-selected\)'
@@ -695,6 +698,8 @@ function! s:HandleOutput(chan, msg)
             call s:HandleEvaluate(debugger_line)
         elseif debugger_line =~ '^\^error,msg='
             call s:HandleError(debugger_line)
+        elseif debugger_line =~ '^\~"'  
+            let debugger_line = substitute(debugger_line, '\\t', "\t", 'g')
         elseif debugger_line == g:neodbg_prompt
             let debugger_line = g:neodbg_prompt
         endif
@@ -1181,7 +1186,9 @@ function! NeoDebugSendCommand(cmd, ...)  " [mode]
     let s:mode = mode
 
     if  mode == 'u'  ||  -1 != match(usercmd, '^complete')
-        echomsg "<GDB1>:[".usercmd."][mode:".mode."]"
+        if g:neodbg_debuginfo == 1
+            echomsg "<GDB1>:[".usercmd."][mode:".mode."]"
+        endif
         let s:neodbg_sendcmd_flag = 0
     else
         "save commands 
