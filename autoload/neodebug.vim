@@ -1620,9 +1620,9 @@ function! neodebug#SetWindowSytaxHilight()
     " hi NeoDbgBreakPoint guibg=darkred guifg=white ctermbg=darkred ctermfg=white
     " hi NeoDbgDisabledBreak guibg=lightred guifg=black ctermbg=lightred ctermfg=black
 
-    sign define NeoDebugBP  linehl=NeoDbgBreakPoint    text=B> texthl=NeoDbgBreakPoint
-    sign define NeoDebugDBP linehl=NeoDbgDisabledBreak text=b> texthl=NeoDbgDisabledBreak
-    sign define NeoDebugPC  linehl=NeoDbgPC            text=>> texthl=NeoDbgPC
+    sign define NeoDebugBP  linehl=NeoDbgBreakPoint    text=● texthl=NeoDbgBreakPoint
+    sign define NeoDebugDBP linehl=NeoDbgDisabledBreak text=○ texthl=NeoDbgDisabledBreak
+    sign define NeoDebugPC  linehl=NeoDbgPC            text=> texthl=NeoDbgPC
 
     " highlight NeoDebugGoto guifg=Blue
     hi def link NeoDebugKey Statement
